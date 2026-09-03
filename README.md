@@ -2,39 +2,88 @@
 
 ![mojV](icon.svg)
 
-Nieoficjalna integracja Home Assistant skoncentrowana na planie lekcji, bieżącej/następnej lekcji, frekwencji, ocenach, uwagach i automatyzacjach szkolnych.
+Integracja Home Assistant skoncentrowana na planie lekcji, bieżącej/następnej lekcji, frekwencji, ocenach, uwagach i automatyzacjach szkolnych.
 
 ## Status
 
-**HACS 0.5.2 — LIVE + panel Szkoła + poprawiony pełny flow logowania.**
+**HACS 0.6.0 — LIVE + panel Szkoła + automatyczny helper przeglądarkowy.**
 
-Wersja 0.5.2 rozwija rzeczywiste logowanie do portalu szkolnego, automatyczne wykrywanie **1..N dzieci** oraz pobieranie prawdziwego planu lekcji i frekwencji. Najważniejszą zmianą jest pełniejsze przejście procesu logowania: etap identyfikacji konta, przekazanie sesji do konkretnego dziennika, obsługa formularzy SSO oraz odpowiedzi API opakowanych w `data`.
+Wersja 0.6.0 zachowuje obsługę **1..N dzieci**, rzeczywisty plan lekcji i frekwencję oraz dodaje bezpieczny lokalny mechanizm dla kont, na których portal szkolny wymaga pełnej przeglądarki.
 
-W 0.5.2 diagnostyka wykrywania uczniów raportuje wyłącznie bezpieczne informacje techniczne: liczbę znalezionych linków, liczbę uruchomionych sesji dziennika, liczbę odpowiedzi kontekstu, liczbę rekordów oraz nazwy pól/kształt odpowiedzi. Login, hasło, cookies, klucze sesji i payloady SSO nie są logowane.
+mojV zawsze najpierw próbuje lekkiego logowania bez dodatkowego kontenera. Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie przełącza się na lokalną aplikację **mojV Auth Helper** z Chromium. Użytkownik nie wybiera backendu logowania ręcznie.
 
-Logowanie jest realizowane lekką sesją HTTP wewnątrz integracji. Jeżeli dane konto otrzyma obowiązkową weryfikację wymagającą pełnej przeglądarki, Config Flow zgłosi to jednoznacznie zamiast zapisywać niedziałającą konfigurację.
+## mojV Auth Helper
+
+Helper jest potrzebny tylko wtedy, gdy portal szkolny wymaga pełnej przeglądarki. Działa jako mała aplikacja Home Assistant obok integracji HACS.
+
+Zasady bezpieczeństwa helpera:
+
+- Chromium działa wyłącznie wewnątrz osobnego kontenera,
+- hasło jest używane do logowania, ale nie jest zapisywane przez helper,
+- cookies, tokeny i klucze sesji pozostają w helperze,
+- integracja HACS nie otrzymuje cookies ani kluczy sesji,
+- do integracji wracają tylko dane ucznia, plan lekcji i frekwencja,
+- helper nie wystawia portu do sieci LAN,
+- komunikacja z Home Assistant odbywa się w wewnętrznej sieci systemu.
+
+## Instalacja 0.6.0
+
+### 1. Integracja HACS
+
+1. W HACS dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories, jeżeli repo nie jest jeszcze dodane.
+2. Wybierz `mojV` → **Download / Redownload / Update**.
+3. Zainstaluj wersję **0.6.0** lub nowszą.
+4. Uruchom ponownie Home Assistant.
+
+HACS instaluje integrację jako:
+
+`/homeassistant/custom_components/mojv`
+
+### 2. Lokalny helper przeglądarkowy
+
+Jeżeli Config Flow poinformuje, że portal wymaga pełnej przeglądarki:
+
+1. Otwórz **Ustawienia → Apps / Aplikacje → App Store**.
+2. Dodaj repozytorium `https://github.com/gekon27/mojV` do repozytoriów aplikacji.
+3. Zainstaluj **mojV Auth Helper**.
+4. Uruchom helper i pozostaw automatyczne uruchamianie przy starcie włączone.
+5. Wróć do **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
+6. Wybierz **Konto szkolne** i ponownie podaj login/alias/e-mail oraz hasło.
+
+mojV sam wykryje uruchomiony helper i użyje go tylko wtedy, gdy zwykłe logowanie zostanie zatrzymane przez weryfikację wymagającą przeglądarki.
+
+## Konfiguracja konta
+
+Po restarcie Home Assistant:
+
+1. Otwórz **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
+2. Wybierz **Konto szkolne**.
+3. Podaj login, alias lub e-mail oraz hasło.
+4. mojV automatycznie wykryje wszystkie dzieci dostępne na koncie.
+
+Po sukcesie wpis integracji będzie nazwany np. `mojV — 2 dzieci`, a każde dziecko otrzyma osobne urządzenie Home Assistant.
+
+Tryb **Demo** pozostaje dostępny jako niezależny test lokalny.
 
 ## Panel „Szkoła”
 
 Po załadowaniu integracji mojV automatycznie rejestruje pozycję **Szkoła** w lewym menu Home Assistant.
 
-Panel 0.5.2 zawiera:
+Panel zawiera:
 
 - zakładki do przełączania pomiędzy wykrytymi dziećmi,
 - pełny plan lekcji poniedziałek–piątek,
-- mocne wyróżnienie dzisiejszego dnia i aktualnej lekcji,
+- wyróżnienie dzisiejszego dnia i aktualnej lekcji,
 - aktualną i następną lekcję,
 - numer lekcji, salę i nauczyciela,
 - pierścień postępu lekcji oraz czas do końca,
 - stan frekwencji przy każdej lekcji,
 - alerty o nieobecności, spóźnieniu i zbliżającym się końcu lekcji,
-- panel ostatnich ocen,
-- panel ostatnich uwag,
-- panel bieżących powiadomień,
+- sekcje ocen, uwag i powiadomień,
 - responsywny układ desktop / tablet / telefon,
 - własny branding mojV.
 
-Panel nie tworzy fikcyjnych modułów. Sekcje wymagające danych, których LIVE jeszcze nie pobiera, nie są udawane.
+Sekcje wymagające danych, których LIVE jeszcze nie pobiera, nie są uzupełniane fikcyjnymi danymi.
 
 ## Encje Home Assistant
 
@@ -64,56 +113,42 @@ mojV publikuje zdarzenia Home Assistant:
 
 Zdarzenia można podpiąć do `notify.mobile_app_*`, głośnika, komunikatora albo dowolnej automatyzacji HA.
 
-## Instalacja / aktualizacja przez HACS
-
-1. Dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories, jeżeli repo nie jest jeszcze dodane.
-2. W HACS wybierz `mojV` → **Redownload / Update**.
-3. Uruchom ponownie Home Assistant.
-4. Otwórz **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
-5. Wybierz **Konto szkolne**.
-6. Podaj login/e-mail albo alias oraz hasło.
-7. mojV sprawdzi logowanie i automatycznie wykryje wszystkie dzieci dostępne na koncie.
-
-Po sukcesie wpis integracji będzie nazwany np. `mojV — 2 dzieci`, a panel **Szkoła** zacznie korzystać z rzeczywistych danych.
-
-Tryb **Demo** można dodać osobno, jeśli potrzebny jest test bez połączenia z portalem.
-
 ## Aktualny zakres LIVE
 
-W 0.5.2 podstawą pozostają dwa najważniejsze moduły:
+W 0.6.0 działającą podstawą LIVE pozostają:
 
+- automatyczne wykrywanie 1..N dzieci,
 - plan lekcji,
-- frekwencja.
+- frekwencja,
+- stan aktualnej/następnej lekcji,
+- alerty wynikające z planu i frekwencji.
 
-Oceny, uwagi, terminarz, wiadomości i kolejne funkcje są rozwijane na tej samej modularnej warstwie danych i będą dokładane po zweryfikowaniu rzeczywistego logowania i struktury danych na kontach użytkowników.
+Oceny, uwagi, terminarz, wiadomości i kolejne moduły są rozwijane na tej samej modularnej warstwie danych.
 
 ## Diagnostyka
 
 Jeżeli logowanie albo integracja się nie załaduje:
 
-1. Otwórz **Ustawienia → System → Dzienniki**.
-2. Wyszukaj `mojv`.
-3. Ponów próbę logowania.
-4. Wróć do dziennika i skopiuj linie z `custom_components.mojv`.
+1. Otwórz **Ustawienia → System → Dzienniki** i wyszukaj `mojv`.
+2. Jeżeli używany jest helper, otwórz **Ustawienia → Apps / Aplikacje → mojV Auth Helper → Logi**.
+3. Ponów próbę logowania i skopiuj wyłącznie odpowiednie komunikaty błędu.
 
-Nie publikuj hasła ani cookies. Diagnostyka mojV nie zapisuje ich do logu.
-
-## Instalacja ręczna
-
-HACS instaluje katalog `custom_components/mojv` do katalogu konfiguracji Home Assistant. W używanym tutaj układzie będzie to:
-
-`/homeassistant/custom_components/mojv`
+Nie publikuj hasła ani cookies. mojV nie powinien zapisywać tych danych do logów.
 
 ## Branding
 
-Od Home Assistant 2026.3 custom integrations mogą dostarczać branding lokalnie. mojV zawiera własny `custom_components/mojv/brand/icon.png`, więc ikona pojawia się bez osobnego repozytorium marek.
+Od Home Assistant 2026.3 custom integrations mogą dostarczać branding lokalnie. mojV zawiera własny `custom_components/mojv/brand/icon.png`.
 
 ## Architektura
 
-- `auth.py` — uwierzytelnienie, SSO i automatyczne wykrywanie dzieci,
-- `school_api.py` — modułowe zapytania danych,
+### Integracja HACS
+
+- `auth.py` — lekki flow logowania i wykrywanie potrzeby pełnej przeglądarki,
+- `helper_gateway.py` — bezpieczna komunikacja z lokalnym helperem przez Supervisor,
+- `helper_protocol.py` — walidacja sekretów i kontraktu helpera,
+- `school_api.py` — modułowe zapytania danych dla lekkiej sesji,
 - `parsers/` — niezależne parsery odpowiedzi,
-- `client.py` — scala dane w model mojV,
+- `client.py` — scala dane niezależnie od backendu logowania,
 - `coordinator.py` — kontrolowane odświeżanie danych,
 - `models.py` — wspólny model szkolny,
 - `logic.py` — lokalna logika czasu lekcji i stanów panelu,
@@ -123,6 +158,12 @@ Od Home Assistant 2026.3 custom integrations mogą dostarczać branding lokalnie
 - `sensor.py`, `binary_sensor.py`, `calendar.py` — standardowe encje HA,
 - `config_flow.py` — konfiguracja GUI,
 - `diagnostics.py` — diagnostyka.
+
+### mojV Auth Helper
+
+- `mojv_auth_helper/Dockerfile` — mały obraz z Chromium i ChromeDriver,
+- `rootfs/app/server.py` — prywatne API helpera oraz obsługa przeglądarki,
+- `rootfs/app/auth_runtime.py` — parser kontekstu i filtracja danych publicznych.
 
 ## Multi-student
 
