@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">mojV</title>
+  <desc id="desc">Stylizowana litera V zbudowana z otwartej książki i zegara szkolnego.</desc>
+  <defs>
+    <linearGradient id="bg" x1="72" y1="56" x2="452" y2="466" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="0.55" stop-color="#0f6b9f"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="page" x1="145" y1="158" x2="355" y2="389" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dff7ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#06283d" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect x="36" y="36" width="440" height="440" rx="112" fill="url(#bg)"/>
+  <path d="M103 168c48-18 98-8 153 28 55-36 105-46 153-28v190c-50-17-101-5-153 36-52-41-103-53-153-36V168Z" fill="url(#page)" filter="url(#shadow)"/>
+  <path d="M256 196v198" stroke="#0d5e86" stroke-width="13" stroke-linecap="round" opacity="0.34"/>
+  <path d="M140 202c38-5 73 6 104 28M140 240c34-4 65 4 93 22M140 278c31-3 59 3 84 18" fill="none" stroke="#0f6b9f" stroke-width="11" stroke-linecap="round" opacity="0.45"/>
+  <path d="M372 202c-38-5-73 6-104 28M372 240c-34-4-65 4-93 22" fill="none" stroke="#0f6b9f" stroke-width="11" stroke-linecap="round" opacity="0.45"/>
+  <path d="M157 186 256 364 355 186" fill="none" stroke="#0b3550" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.86"/>
+  <circle cx="374" cy="137" r="64" fill="#ffffff" stroke="#baf4eb" stroke-width="10" filter="url(#shadow)"/>
+  <circle cx="374" cy="137" r="43" fill="#ecfeff" stroke="#0f766e" stroke-width="8"/>
+  <path d="M374 111v29l21 14" fill="none" stroke="#0f5f73" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="374" cy="137" r="6" fill="#0f5f73"/>
+  <circle cx="116" cy="112" r="13" fill="#67e8f9" opacity="0.9"/>
+  <circle cx="407" cy="382" r="10" fill="#99f6e4" opacity="0.8"/>
+</svg>
