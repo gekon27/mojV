@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.8.0] - 2026-09-03
+
+- dodane rzeczywiste dane LIVE ocen cząstkowych oraz ocen proponowanych i okresowych/końcowych,
+- dodane rzeczywiste dane LIVE terminarza: sprawdziany, kartkówki, klasówki i zadania domowe,
+- plan lekcji wysyła pełny aktualny zakres danych wymagany przez endpoint,
+- nowy wspólny `snapshot_builder` normalizuje dane identycznie dla lekkiego backendu HTTP i helpera Chromium,
+- parser ocen obsługuje okresy klasyfikacyjne, opisy/kategorie oraz daty ISO i polski format daty,
+- parser terminarza mapuje typy zdarzeń, preferuje termin odpowiedzi i czyści HTML przed przekazaniem danych do Home Assistant,
+- błędy modułów są izolowane: awaria ocen lub terminarza nie zatrzymuje planu ani frekwencji,
+- helper 0.1.6 pobiera rozszerzony snapshot bez eksportowania identyfikatorów routingu, kluczy sesji, cookies lub tokenów,
+- Core rekurencyjnie sprawdza cały payload helpera i odrzuca niedozwolone pola uwierzytelniające także w zagnieżdżonych danych,
+- panel **Szkoła** otrzymał osobne widoki **Oceny** i **Terminarz**,
+- widok ocen pokazuje najnowsze oceny oraz klasyfikację proponowaną i końcową,
+- terminarz rozdziela nadchodzące zdarzenia od ostatnich terminów i wyróżnia pilne zadania,
+- ekran **Dzisiaj** pokazuje najbliższe zadanie, gdy nie ma pilniejszego alertu lekcji/frekwencji,
+- zachowana szybka architektura Panelu v2: DOM tworzony raz, ticker 10 s i lokalne przełączanie dziecka/widoku/tygodnia,
+- dodane testy RED→GREEN parserów, klienta API, kontraktu helpera, filtracji sekretów, wspólnego buildera oraz panelu,
+- README, manifest i changelog zsynchronizowane do `0.8.0`.
+
 ## [0.7.0] - 2026-09-03
 
 - przebudowany panel **Szkoła** do architektury aplikacyjnej z DOM tworzonym jeden raz zamiast pełnego rerenderu przy każdym odświeżeniu,
