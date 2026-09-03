@@ -1,8 +1,8 @@
 """Authentication and student discovery for mojV.
 
 This module intentionally keeps browser-dependent concerns outside the Home
-Assistant entity layer.  It first attempts a lightweight two-step HTML login
-using a dedicated cookie session.  If the portal requires browser-side robot
+Assistant entity layer. It first attempts a lightweight two-step HTML login
+using a dedicated cookie session. If the portal requires browser-side robot
 verification, a dedicated exception is raised so the UI can report that
 cleanly instead of treating it as invalid credentials.
 """
@@ -11,11 +11,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from html.parser import HTMLParser
 import json
-import re
+import logging
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import aiohttp
+
+_LOGGER = logging.getLogger(__name__)
 
 _PORTAL_ROOT = "https://edu" + "vulcan.pl"
 _STUDENT_ROOT = "https://uczen." + "edu" + "vulcan.pl"
@@ -63,7 +65,7 @@ class StudentTarget:
     class_name: str
     base_url: str
     key: str
-    diary_id: str
+    diary_id: str = ""
 
 
 @dataclass(slots=True)
@@ -249,15 +251,17 @@ def _target_from_row(city: str, row: dict[str, Any]) -> StudentTarget | None:
     key = str(row.get("key") or "").strip()
     diary_id = str(row.get("idDziennik") or "").strip()
     name = str(row.get("uczen") or row.get("nazwa") or "").strip()
-    if not key or not diary_id or not name:
+    if not key or not name:
         return None
 
+    class_name = str(row.get("oddzial") or row.get("klasa") or "").strip()
     raw_id = row.get("idUczen") or row.get("idUcznia") or row.get("id")
-    student_id = str(raw_id or f"{city}:{diary_id}:{name}")
+    fallback = f"{city}:{diary_id or class_name}:{name}"
+    student_id = str(raw_id or fallback)
     return StudentTarget(
         student_id=student_id,
         name=name,
-        class_name=str(row.get("oddzial") or row.get("klasa") or "").strip(),
+        class_name=class_name,
         base_url=f"{_STUDENT_ROOT}/{city}",
         key=key,
         diary_id=diary_id,
@@ -297,6 +301,9 @@ async def async_login(
         raise MojVCannotConnect("Login completed but no diary link was discovered")
 
     targets: dict[str, StudentTarget] = {}
+    discovered_rows = 0
+    observed_fields: set[str] = set()
+
     for link in links:
         final_url, _ = await _request_text(session, "get", link)
         city = _city_from_url(final_url)
@@ -324,12 +331,20 @@ async def async_login(
         except aiohttp.ClientError as err:
             raise MojVCannotConnect(str(err)) from err
 
-        for row in _records(payload):
+        rows = _records(payload)
+        discovered_rows += len(rows)
+        for row in rows:
+            observed_fields.update(str(field) for field in row)
             target = _target_from_row(city, row)
             if target is not None:
                 targets.setdefault(target.student_id, target)
 
     if not targets:
+        _LOGGER.warning(
+            "Student discovery returned no usable records: rows=%d fields=%s",
+            discovered_rows,
+            sorted(observed_fields),
+        )
         raise MojVNoStudents
     return tuple(targets.values())
 
