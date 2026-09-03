@@ -3,9 +3,13 @@ FROM ghcr.io/home-assistant/base-python:3.13-alpine3.24
 ARG BUILD_VERSION
 ARG BUILD_ARCH
 
+ENV MOJV_HELPER_VERSION="${BUILD_VERSION}"
+ENV DISPLAY=":99"
+
 RUN apk add --no-cache \
       chromium \
       chromium-chromedriver \
+      xvfb \
       nss \
       freetype \
       harfbuzz \
