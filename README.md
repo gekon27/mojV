@@ -6,9 +6,9 @@ Nieoficjalna integracja Home Assistant skoncentrowana na planie lekcji, bieżąc
 
 ## Status
 
-**HACS 0.5.0 — LIVE + nowy panel Szkoła.**
+**HACS 0.5.1 — LIVE + panel Szkoła + poprawki migracji i wykrywania uczniów.**
 
-Wersja 0.5.0 zachowuje rzeczywiste logowanie do portalu szkolnego, automatyczne wykrywanie **1..N dzieci** oraz pobieranie prawdziwego planu lekcji i frekwencji. Największą zmianą jest przebudowany panel **Szkoła**, zaprojektowany jako czytelny dashboard rodzinny zamiast zbioru technicznych encji.
+Wersja 0.5.1 zachowuje rzeczywiste logowanie do portalu szkolnego, automatyczne wykrywanie **1..N dzieci** oraz pobieranie prawdziwego planu lekcji i frekwencji. Zawiera też poprawkę migracji starszych wpisów integracji oraz poprawione wykrywanie uczniów, które nie wymaga już opcjonalnego identyfikatora dziennika do uruchomienia planu i frekwencji.
 
 Logowanie jest realizowane lekką sesją HTTP wewnątrz integracji. Jeżeli dane konto otrzyma obowiązkową weryfikację wymagającą pełnej przeglądarki, Config Flow zgłosi to jednoznacznie zamiast zapisywać niedziałającą konfigurację.
 
@@ -16,7 +16,7 @@ Logowanie jest realizowane lekką sesją HTTP wewnątrz integracji. Jeżeli dane
 
 Po załadowaniu integracji mojV automatycznie rejestruje pozycję **Szkoła** w lewym menu Home Assistant.
 
-Panel 0.5.0 zawiera:
+Panel 0.5.1 zawiera:
 
 - zakładki do przełączania pomiędzy wykrytymi dziećmi,
 - pełny plan lekcji poniedziałek–piątek,
@@ -78,7 +78,7 @@ Tryb **Demo** można dodać osobno, jeśli potrzebny jest test bez połączenia 
 
 ## Aktualny zakres LIVE
 
-W 0.5.0 podstawą pozostają dwa najważniejsze moduły:
+W 0.5.1 podstawą pozostają dwa najważniejsze moduły:
 
 - plan lekcji,
 - frekwencja.
