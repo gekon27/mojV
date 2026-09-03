@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.1] - 2026-09-03
+
+- helper przeglądarkowy jest publikowany jako gotowy obraz GHCR zamiast budowania lokalnie na Home Assistant,
+- dodany prebuilt multi-arch image dla `amd64` i `aarch64`,
+- usunięta zależność instalacji helpera od dostępu Home Assistant do PyPI podczas lokalnego `docker build`,
+- `mojv_auth_helper/config.yaml` wskazuje teraz bezpośrednio obraz `ghcr.io/gekon27/mojv-auth-helper`,
+- dodany workflow publikujący obrazy helpera do GHCR,
+- CI wymusza obecność prebuilt image w konfiguracji aplikacji,
+- README i manifest zsynchronizowane do wersji 0.6.1.
+
 ## [0.6.0] - 2026-09-03
 
 - dodany opcjonalny lokalny **mojV Auth Helper** z Chromium dla kont wymagających pełnej przeglądarki,
