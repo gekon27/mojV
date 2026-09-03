@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 import sys
 from pathlib import Path
@@ -84,27 +85,36 @@ class _Session:
         raise AssertionError(url)
 
 
-@pytest.mark.asyncio
-async def test_gateway_discovers_running_helper_and_reads_account() -> None:
+def test_gateway_discovers_running_helper_and_reads_account() -> None:
     helper = _load()
-    session = _Session()
-    gateway = helper.HelperGateway(session, supervisor_token="token")
-    students = await gateway.async_account("alias", "secret")
-    assert students == ({"student_id": "1", "name": "Jan", "class_name": "5A"},)
-    assert any(call[1].endswith("/addons/abc_mojv_auth_helper/info") for call in session.calls)
+
+    async def run():
+        session = _Session()
+        gateway = helper.HelperGateway(session, supervisor_token="token")
+        students = await gateway.async_account("alias", "secret")
+        assert students == ({"student_id": "1", "name": "Jan", "class_name": "5A"},)
+        assert any(call[1].endswith("/addons/abc_mojv_auth_helper/info") for call in session.calls)
+
+    asyncio.run(run())
 
 
-@pytest.mark.asyncio
-async def test_gateway_validates_snapshot_contract() -> None:
+def test_gateway_validates_snapshot_contract() -> None:
     helper = _load()
-    gateway = helper.HelperGateway(_Session(), supervisor_token="token")
-    snapshot = await gateway.async_snapshot("alias", "secret")
-    assert snapshot["students"][0]["name"] == "Jan"
+
+    async def run():
+        gateway = helper.HelperGateway(_Session(), supervisor_token="token")
+        snapshot = await gateway.async_snapshot("alias", "secret")
+        assert snapshot["students"][0]["name"] == "Jan"
+
+    asyncio.run(run())
 
 
-@pytest.mark.asyncio
-async def test_gateway_requires_supervisor_token() -> None:
+def test_gateway_requires_supervisor_token() -> None:
     helper = _load()
-    gateway = helper.HelperGateway(_Session(), supervisor_token="")
-    with pytest.raises(helper.HelperUnavailable):
-        await gateway.async_health()
+
+    async def run():
+        gateway = helper.HelperGateway(_Session(), supervisor_token="")
+        with pytest.raises(helper.HelperUnavailable):
+            await gateway.async_health()
+
+    asyncio.run(run())
