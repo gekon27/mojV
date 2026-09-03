@@ -6,9 +6,9 @@ Nieoficjalna integracja Home Assistant skoncentrowana na planie lekcji, bieżąc
 
 ## Status
 
-**HACS 0.4.0 — pierwszy build LIVE.**
+**HACS 0.5.0 — LIVE + nowy panel Szkoła.**
 
-Wersja 0.4.0 dodaje rzeczywiste logowanie do portalu szkolnego, automatyczne wykrywanie **1..N dzieci** oraz pobieranie prawdziwego planu lekcji i frekwencji. Tryb demonstracyjny nadal jest dostępny do diagnostyki UI.
+Wersja 0.5.0 zachowuje rzeczywiste logowanie do portalu szkolnego, automatyczne wykrywanie **1..N dzieci** oraz pobieranie prawdziwego planu lekcji i frekwencji. Największą zmianą jest przebudowany panel **Szkoła**, zaprojektowany jako czytelny dashboard rodzinny zamiast zbioru technicznych encji.
 
 Logowanie jest realizowane lekką sesją HTTP wewnątrz integracji. Jeżeli dane konto otrzyma obowiązkową weryfikację wymagającą pełnej przeglądarki, Config Flow zgłosi to jednoznacznie zamiast zapisywać niedziałającą konfigurację.
 
@@ -16,19 +16,23 @@ Logowanie jest realizowane lekką sesją HTTP wewnątrz integracji. Jeżeli dane
 
 Po załadowaniu integracji mojV automatycznie rejestruje pozycję **Szkoła** w lewym menu Home Assistant.
 
-Panel jest responsywny i dla każdego wykrytego dziecka pokazuje:
+Panel 0.5.0 zawiera:
 
+- zakładki do przełączania pomiędzy wykrytymi dziećmi,
 - pełny plan lekcji poniedziałek–piątek,
-- wyróżnienie dzisiejszego dnia i aktualnej lekcji,
+- mocne wyróżnienie dzisiejszego dnia i aktualnej lekcji,
 - aktualną i następną lekcję,
-- numer lekcji, salę, nauczyciela i czas do końca,
-- stan frekwencji przy lekcjach,
-- alert o spóźnieniu,
-- alert o nieobecności,
-- alert o końcu lekcji w ciągu 5 minut,
-- miejsce na oceny i uwagi.
+- numer lekcji, salę i nauczyciela,
+- pierścień postępu lekcji oraz czas do końca,
+- stan frekwencji przy każdej lekcji,
+- alerty o nieobecności, spóźnieniu i zbliżającym się końcu lekcji,
+- panel ostatnich ocen,
+- panel ostatnich uwag,
+- panel bieżących powiadomień,
+- responsywny układ desktop / tablet / telefon,
+- własny branding mojV.
 
-Przy dwóch dzieciach plany są niezależne i układają się responsywnie na komputerze i telefonie.
+Panel nie tworzy fikcyjnych modułów. Sekcje wymagające danych, których LIVE jeszcze nie pobiera, nie są udawane.
 
 ## Encje Home Assistant
 
@@ -72,14 +76,14 @@ Po sukcesie wpis integracji będzie nazwany np. `mojV — 2 dzieci`, a panel **S
 
 Tryb **Demo** można dodać osobno, jeśli potrzebny jest test bez połączenia z portalem.
 
-## Pierwszy zakres LIVE
+## Aktualny zakres LIVE
 
-W 0.4.0 celowo uruchamiane są najpierw dwa najważniejsze moduły:
+W 0.5.0 podstawą pozostają dwa najważniejsze moduły:
 
 - plan lekcji,
 - frekwencja.
 
-Oceny, uwagi, terminarz, wiadomości i kolejne funkcje są rozwijane na tej samej modularnej warstwie danych i będą dokładane po zweryfikowaniu rzeczywistego logowania i struktury danych.
+Oceny, uwagi, terminarz, wiadomości i kolejne funkcje są rozwijane na tej samej modularnej warstwie danych i będą dokładane po zweryfikowaniu rzeczywistego logowania i struktury danych na kontach użytkowników.
 
 ## Diagnostyka
 
@@ -109,7 +113,7 @@ Od Home Assistant 2026.3 custom integrations mogą dostarczać branding lokalnie
 - `client.py` — scala dane w model mojV,
 - `coordinator.py` — kontrolowane odświeżanie danych,
 - `models.py` — wspólny model szkolny,
-- `logic.py` — lokalna logika czasu lekcji,
+- `logic.py` — lokalna logika czasu lekcji i stanów panelu,
 - `panel.py` — backend panelu i WebSocket,
 - `frontend/school-panel.js` — panel **Szkoła**,
 - `notifications.py` — alerty i eventy,
@@ -119,4 +123,4 @@ Od Home Assistant 2026.3 custom integrations mogą dostarczać branding lokalnie
 
 ## Multi-student
 
-Integracja nie zakłada dwóch dzieci na sztywno. Konto jest traktowane jako kolekcja **1..N uczniów**, a każdy dostaje własne urządzenie, encje i plan.
+Integracja nie zakłada dwóch dzieci na sztywno. Konto jest traktowane jako kolekcja **1..N uczniów**, a każde dziecko dostaje własne urządzenie, encje i plan.
