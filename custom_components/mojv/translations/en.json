@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Test mojV",
-        "description": "Demo mode creates the full entity set without logging in to eduVULCAN. Select how many students should be simulated.",
+        "description": "Demo mode creates the full entity set without logging in to the school portal. Select how many students should be simulated.",
         "data": {
           "demo_students": "Number of students"
         }
