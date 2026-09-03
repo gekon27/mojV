@@ -118,3 +118,63 @@ def test_lessons_today_filters_and_sorts() -> None:
         earlier,
         later,
     )
+
+
+def test_lesson_progress_pct_tracks_elapsed_lesson_time() -> None:
+    progress = getattr(logic, "lesson_progress_pct", None)
+    assert progress is not None, "lesson_progress_pct must be implemented"
+
+    start = datetime(2026, 9, 3, 10, 0, tzinfo=timezone.utc)
+    lesson = Lesson(
+        number=1,
+        subject="A",
+        start=start,
+        end=start + timedelta(minutes=40),
+    )
+
+    assert progress(lesson, start - timedelta(minutes=1)) == 0
+    assert progress(lesson, start + timedelta(minutes=10)) == 25
+    assert progress(lesson, start + timedelta(minutes=40)) == 100
+
+
+def test_lesson_alerts_prioritize_absence_and_end_warning() -> None:
+    alerts = getattr(logic, "lesson_alerts", None)
+    assert alerts is not None, "lesson_alerts must be implemented"
+
+    now = datetime(2026, 9, 3, 10, 0, tzinfo=timezone.utc)
+    lesson = Lesson(
+        number=3,
+        subject="Biologia",
+        start=now - timedelta(minutes=40),
+        end=now + timedelta(minutes=5),
+        attendance="absent",
+    )
+
+    assert alerts(lesson, now) == (
+        ("absence", "Nieobecność na trwającej lekcji"),
+        ("ending", "Koniec lekcji za 5 min"),
+    )
+
+
+def test_lesson_alerts_marks_lateness_without_inventing_presence() -> None:
+    alerts = getattr(logic, "lesson_alerts", None)
+    assert alerts is not None, "lesson_alerts must be implemented"
+
+    now = datetime(2026, 9, 3, 10, 0, tzinfo=timezone.utc)
+    late = Lesson(
+        number=2,
+        subject="Matematyka",
+        start=now - timedelta(minutes=5),
+        end=now + timedelta(minutes=40),
+        attendance="late",
+    )
+    no_record = Lesson(
+        number=3,
+        subject="Polski",
+        start=now - timedelta(minutes=5),
+        end=now + timedelta(minutes=40),
+        attendance="not_recorded",
+    )
+
+    assert alerts(late, now) == (("late", "Spóźnienie na trwającą lekcję"),)
+    assert alerts(no_record, now) == ()
