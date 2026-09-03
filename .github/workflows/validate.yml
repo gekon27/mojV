@@ -102,6 +102,17 @@ jobs:
             mojv_auth_helper
       - name: Start helper image
         run: docker run -d --name mojv-auth-helper-test -p 18099:8099 mojv-auth-helper:test
+      - name: Wait for helper readiness
+        run: |
+          set -e
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:18099/health > /tmp/helper-health.json; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs mojv-auth-helper-test || true
+          exit 1
       - name: Smoke-test Xvfb and Chromium
         run: |
           docker exec mojv-auth-helper-test sh -c '
@@ -119,10 +130,9 @@ jobs:
           EXPECTED_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -e
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error http://127.0.0.1:18099/health > /tmp/helper-health.json; then
-              cat /tmp/helper-health.json
-              python - <<'PY'
+          curl --fail --silent --show-error http://127.0.0.1:18099/health > /tmp/helper-health.json
+          cat /tmp/helper-health.json
+          python - <<'PY'
           import json
           import os
           from pathlib import Path
@@ -131,12 +141,6 @@ jobs:
           assert payload['status'] == 'ok'
           assert payload['version'] == os.environ['EXPECTED_VERSION']
           PY
-              exit 0
-            fi
-            sleep 1
-          done
-          docker logs mojv-auth-helper-test || true
-          exit 1
       - name: Show helper logs on failure
         if: failure()
         run: docker logs mojv-auth-helper-test || true
