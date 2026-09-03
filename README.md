@@ -1,12 +1,12 @@
 # mojV
 
-Nieoficjalna integracja Home Assistant dla eduVULCAN. Projekt koncentruje się na planie lekcji, bieżącej/następnej lekcji, frekwencji oraz automatyzacjach związanych z końcem zajęć.
+Nieoficjalna integracja Home Assistant dla mojV. Projekt koncentruje się na planie lekcji, bieżącej/następnej lekcji, frekwencji oraz automatyzacjach związanych z końcem zajęć.
 
 ## Status
 
 **Wersja testowa HACS 0.2.0.**
 
-Aktualny build służy do sprawdzenia instalacji przez HACS i całej architektury Home Assistant. Zawiera deterministyczny tryb demo obsługujący **1..N dzieci** (domyślnie 2). Logowanie live do eduVULCAN zostanie dołączone jako osobna warstwa klienta; nie trzeba będzie przebudowywać encji ani dashboardu.
+Aktualny build służy do sprawdzenia instalacji przez HACS i całej architektury Home Assistant. Zawiera deterministyczny tryb demo obsługujący **1..N dzieci** (domyślnie 2). Logowanie live do mojV zostanie dołączone jako osobna warstwa klienta; nie trzeba będzie przebudowywać encji ani dashboardu.
 
 ## Funkcje dostępne w teście
 
@@ -86,4 +86,4 @@ Integracja nie zakłada dwóch dzieci na sztywno. Dane są przetwarzane jako kol
 
 ## Ważne
 
-To projekt nieoficjalny i nie jest powiązany z firmą VULCAN. Obecny test nie wykonuje żadnych zapytań do eduVULCAN.
+To projekt nieoficjalny i nie jest powiązany z firmą VULCAN. Obecny test nie wykonuje żadnych zapytań do mojV.
