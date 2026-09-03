@@ -7,6 +7,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.helpers import selector
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .auth import (
     MojVBrowserVerificationRequired,
@@ -17,6 +18,9 @@ from .auth import (
     create_session,
 )
 from .const import (
+    AUTH_BACKEND_HELPER,
+    AUTH_BACKEND_HTTP,
+    CONF_AUTH_BACKEND,
     CONF_DEMO_STUDENTS,
     CONF_MODE,
     CONF_PASSWORD,
@@ -27,6 +31,12 @@ from .const import (
     MIN_DEMO_STUDENTS,
     MODE_DEMO,
     MODE_LIVE,
+)
+from .helper_gateway import (
+    HelperGateway,
+    HelperInvalidAuth,
+    HelperRequestError,
+    HelperUnavailable,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -79,6 +89,12 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return self.async_show_form(step_id="demo", data_schema=schema)
 
+    async def _async_helper_login(self, username: str, password: str):
+        """Validate an account through the local browser helper."""
+        gateway = HelperGateway(async_get_clientsession(self.hass))
+        await gateway.async_health()
+        return await gateway.async_account(username, password)
+
     async def async_step_live(self, user_input=None):
         """Validate credentials and create a live account entry."""
         errors: dict[str, str] = {}
@@ -86,13 +102,25 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             username = str(user_input[CONF_USERNAME]).strip()
             password = str(user_input[CONF_PASSWORD])
+            backend = AUTH_BACKEND_HTTP
             session = create_session()
             try:
                 students = await async_login(session, username, password)
             except MojVInvalidAuth:
                 errors["base"] = "invalid_auth"
             except MojVBrowserVerificationRequired:
-                errors["base"] = "browser_verification_required"
+                backend = AUTH_BACKEND_HELPER
+                if not session.closed:
+                    await session.close()
+                try:
+                    students = await self._async_helper_login(username, password)
+                except HelperInvalidAuth:
+                    errors["base"] = "invalid_auth"
+                except HelperUnavailable:
+                    errors["base"] = "helper_required"
+                except HelperRequestError:
+                    _LOGGER.exception("Local browser helper rejected the account request")
+                    errors["base"] = "helper_failed"
             except MojVNoStudents:
                 errors["base"] = "no_students"
             except MojVCannotConnect:
@@ -109,11 +137,25 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_MODE: MODE_LIVE,
                         CONF_USERNAME: username,
                         CONF_PASSWORD: password,
+                        CONF_AUTH_BACKEND: backend,
                     },
                 )
             finally:
                 if not session.closed:
                     await session.close()
+
+            if user_input is not None and "base" not in errors and "students" in locals():
+                await self.async_set_unique_id(f"mojv_live:{username.lower()}")
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(
+                    title=f"mojV — {len(students)} dzieci",
+                    data={
+                        CONF_MODE: MODE_LIVE,
+                        CONF_USERNAME: username,
+                        CONF_PASSWORD: password,
+                        CONF_AUTH_BACKEND: backend,
+                    },
+                )
 
         schema = vol.Schema(
             {
