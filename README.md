@@ -1,14 +1,32 @@
 # mojV
 
-Nieoficjalna integracja Home Assistant skoncentrowana na planie lekcji, bieżącej/następnej lekcji, frekwencji oraz automatyzacjach związanych z końcem zajęć.
+Nieoficjalna integracja Home Assistant skoncentrowana na planie lekcji, bieżącej/następnej lekcji, frekwencji, ocenach, uwagach i automatyzacjach szkolnych.
 
 ## Status
 
-**Wersja testowa HACS 0.2.0.**
+**Wersja testowa HACS 0.3.0.**
 
-Aktualny build służy do sprawdzenia instalacji przez HACS i całej architektury Home Assistant. Zawiera deterministyczny tryb demo obsługujący **1..N dzieci** (domyślnie 2). Logowanie live do portalu szkolnego zostanie dołączone jako osobna warstwa klienta; nie trzeba będzie przebudowywać encji ani dashboardu.
+Aktualny build służy do sprawdzenia instalacji przez HACS i całej architektury Home Assistant. Zawiera deterministyczny tryb demo obsługujący **1..N dzieci** (domyślnie 2). Warstwa danych rzeczywistych zostanie dołączona do istniejącego klienta bez przebudowy encji, panelu ani multi-student.
 
-## Funkcje dostępne w teście
+## Panel „Szkoła”
+
+Po załadowaniu integracji mojV automatycznie rejestruje pozycję **Szkoła** w lewym menu Home Assistant.
+
+Panel jest responsywny i dla każdego dziecka pokazuje:
+
+- pełny plan lekcji na dziś,
+- aktualną i następną lekcję,
+- numer lekcji, salę, nauczyciela i czas do końca,
+- obecność przy każdej lekcji,
+- alert o spóźnieniu,
+- alert o nieobecności,
+- alert o końcu lekcji w ciągu 5 minut,
+- ostatnie oceny,
+- ostatnie uwagi.
+
+Przy dwóch dzieciach plany są pokazane jako dwa niezależne panele na szerokim ekranie i jeden pod drugim na telefonie.
+
+## Encje Home Assistant
 
 Dla każdego dziecka integracja tworzy osobne urządzenie Home Assistant oraz:
 
@@ -25,29 +43,48 @@ Dla każdego dziecka integracja tworzy osobne urządzenie Home Assistant oraz:
 
 Dodatkowo powstaje wspólny sensor liczby wykrytych uczniów.
 
-## Instalacja testowa przez HACS
+## Alerty i zdarzenia
+
+mojV tworzy Persistent Notification w Home Assistant i publikuje zdarzenia event bus:
+
+- `mojv_lesson_late` — spóźnienie,
+- `mojv_lesson_absent` — nieobecność,
+- `mojv_new_grade` — nowa ocena,
+- `mojv_new_remark` — nowa uwaga.
+
+Zdarzenia można później podpiąć bezpośrednio do automatyzacji `notify.mobile_app_*`, komunikatora, głośnika albo innego kanału powiadomień.
+
+Integracja zapamiętuje już obsłużone oceny i uwagi w storage HA. W trybie rzeczywistym pierwszy start nie ma generować lawiny powiadomień o starych wpisach.
+
+## Instalacja przez HACS
 
 1. W HACS otwórz menu z trzema kropkami.
 2. Wybierz **Custom repositories / Niestandardowe repozytoria**.
-3. Dodaj:
-
-   `https://github.com/gekon27/mojV`
-
+3. Dodaj `https://github.com/gekon27/mojV`.
 4. Typ repozytorium: **Integration**.
-5. Zainstaluj `mojV`.
+5. Zainstaluj lub zaktualizuj `mojV`.
 6. Uruchom ponownie Home Assistant.
 7. Otwórz **Ustawienia → Urządzenia i usługi → Dodaj integrację**.
 8. Wyszukaj `mojV`.
-9. Pozostaw `Liczba dzieci = 2` i zakończ konfigurację.
+9. W teście pozostaw `Liczba dzieci = 2`.
 
-## Oczekiwany wynik dla 2 dzieci
+## Oczekiwany wynik testu dla 2 dzieci
 
-W Home Assistant powinny powstać dwa urządzenia:
+Powstaną dwa urządzenia:
 
 - `Dziecko 1`,
 - `Dziecko 2`.
 
-Każde powinno mieć własny zestaw encji. Bezpośrednio po dodaniu integracji pierwsza lekcja jest ustawiana jako trwająca, a licznik minut do końca zmniejsza się wraz z czasem. Stan `Lekcja kończy się` aktywuje się w ostatnich 5 minutach zajęć. Drugie dziecko ma lekko przesunięty plan, co pozwala sprawdzić niezależność danych.
+W danych demo:
+
+- Dziecko 1 ma bieżącą nieobecność,
+- Dziecko 2 ma bieżące spóźnienie,
+- każde ma przykładową ocenę,
+- każde ma przykładową uwagę,
+- bieżąca lekcja kończy się w ciągu kilku minut,
+- po lewej stronie pojawia się panel **Szkoła**.
+
+Pozwala to przetestować UI, encje i mechanizm alertów bez danych rzeczywistych.
 
 ## Diagnostyka
 
@@ -57,34 +94,27 @@ Jeżeli integracja się nie załaduje:
 2. Wyszukaj `mojv`.
 3. Na stronie integracji wybierz **Pobierz diagnostykę** i zachowaj plik.
 
-Diagnostyka mojV jest przygotowana tak, aby przed udostępnieniem usuwać przyszłe pola poufne, takie jak hasło, token, cookies czy klucz sesji.
+Diagnostyka mojV usuwa pola poufne przed eksportem.
 
 ## Instalacja ręczna
 
-HACS instaluje katalog:
-
-`custom_components/mojv`
-
-Do katalogu konfiguracji Home Assistant. Przy Twoim układzie będzie to:
+HACS instaluje katalog `custom_components/mojv` do katalogu konfiguracji Home Assistant. Przy układzie używanym w tym projekcie będzie to:
 
 `/homeassistant/custom_components/mojv`
 
 ## Architektura
 
-- `client.py` — źródło danych (obecnie demo; później portal szkolny),
-- `coordinator.py` — jeden `DataUpdateCoordinator` dla całego konta rodzica,
-- `models.py` — model konta, ucznia i lekcji,
-- `logic.py` — czysta logika aktualnej/następnej lekcji,
-- `sensor.py` — sensory,
-- `binary_sensor.py` — stany „trwa lekcja” i „lekcja kończy się”,
-- `calendar.py` — kalendarze dzieci,
-- `config_flow.py` — konfiguracja przez GUI,
-- `diagnostics.py` — bezpieczna diagnostyka.
+- `client.py` — źródło danych,
+- `coordinator.py` — `DataUpdateCoordinator`,
+- `models.py` — uczniowie, lekcje, oceny i uwagi,
+- `logic.py` — logika czasu lekcji,
+- `panel.py` — backend panelu i WebSocket,
+- `frontend/school-panel.js` — panel „Szkoła”,
+- `notifications.py` — alerty i eventy,
+- `sensor.py`, `binary_sensor.py`, `calendar.py` — standardowe encje HA,
+- `config_flow.py` — konfiguracja GUI,
+- `diagnostics.py` — diagnostyka.
 
 ## Multi-student
 
-Integracja nie zakłada dwóch dzieci na sztywno. Dane są przetwarzane jako kolekcja uczniów i mogą obsłużyć 1..N rekordów. W trybie testowym formularz pozwala ustawić od 1 do 8 symulowanych dzieci.
-
-## Ważne
-
-To projekt nieoficjalny. Obecny test nie wykonuje żadnych zapytań do zewnętrznego portalu szkolnego.
+Integracja nie zakłada dwóch dzieci na sztywno. Dane są przetwarzane jako kolekcja uczniów i mogą obsłużyć 1..N rekordów.
