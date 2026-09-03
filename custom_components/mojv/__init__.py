@@ -16,10 +16,19 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import MojVCoordinator
+from .migration import migrate_entry_data
 from .notifications import MojVNotificationManager
 from .panel import async_register_school_panel, async_unregister_school_panel
 
 DATA_NOTIFIERS = f"{DOMAIN}_notifiers"
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate an older mojV config entry to the current schema."""
+    version, data = migrate_entry_data(entry.version, dict(entry.data))
+    if version != entry.version or data != dict(entry.data):
+        hass.config_entries.async_update_entry(entry, data=data, version=version)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
