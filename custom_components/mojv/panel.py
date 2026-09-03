@@ -13,7 +13,14 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .coordinator import MojVCoordinator
-from .logic import active_lesson, lessons_today, minutes_to_end, next_lesson
+from .logic import (
+    active_lesson,
+    lesson_alerts,
+    lesson_progress_pct,
+    lessons_today,
+    minutes_to_end,
+    next_lesson,
+)
 
 PANEL_URL_PATH = "school"
 PANEL_TITLE = "Szkoła"
@@ -21,7 +28,15 @@ PANEL_ICON = "mdi:school-outline"
 PANEL_ELEMENT = "mojv-school-panel"
 PANEL_STATIC_URL = "/mojv-static"
 DATA_PANEL_REGISTERED = f"{DOMAIN}_panel_registered"
-DAY_NAMES = ("Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela")
+DAY_NAMES = (
+    "Poniedziałek",
+    "Wtorek",
+    "Środa",
+    "Czwartek",
+    "Piątek",
+    "Sobota",
+    "Niedziela",
+)
 
 
 def _lesson_dict(lesson, now) -> dict[str, Any] | None:
@@ -36,7 +51,14 @@ def _lesson_dict(lesson, now) -> dict[str, Any] | None:
         "teacher": lesson.teacher,
         "attendance": lesson.attendance,
         "cancelled": lesson.cancelled,
+        "replacement": lesson.replacement,
+        "note": lesson.note,
         "minutes_to_end": minutes_to_end(lesson, now),
+        "progress_pct": lesson_progress_pct(lesson, now),
+        "alerts": [
+            {"kind": kind, "text": text}
+            for kind, text in lesson_alerts(lesson, now)
+        ],
     }
 
 
