@@ -64,26 +64,28 @@ class MojVClient:
                 Lesson(
                     number=1,
                     subject=selected[0],
-                    start=anchor - timedelta(minutes=10) + offset,
-                    end=anchor + timedelta(minutes=35) + offset,
+                    start=anchor - timedelta(minutes=40) + offset,
+                    end=anchor + timedelta(minutes=5) + offset,
                     room=str(101 + index),
                     teacher="Nauczyciel testowy",
-                    attendance=ATTENDANCE_PRESENT,
+                    attendance=(
+                        ATTENDANCE_LATE if index == 1 else ATTENDANCE_PRESENT
+                    ),
                 ),
                 Lesson(
                     number=2,
                     subject=selected[1],
-                    start=anchor + timedelta(minutes=45) + offset,
-                    end=anchor + timedelta(minutes=90) + offset,
+                    start=anchor + timedelta(minutes=15) + offset,
+                    end=anchor + timedelta(minutes=60) + offset,
                     room=str(201 + index),
                     teacher="Nauczyciel testowy",
-                    attendance=ATTENDANCE_LATE if index == 1 else ATTENDANCE_PRESENT,
+                    attendance=ATTENDANCE_PRESENT,
                 ),
                 Lesson(
                     number=3,
                     subject=selected[2],
-                    start=anchor + timedelta(minutes=100) + offset,
-                    end=anchor + timedelta(minutes=145) + offset,
+                    start=anchor + timedelta(minutes=70) + offset,
+                    end=anchor + timedelta(minutes=115) + offset,
                     room=(
                         "Sala gimnastyczna"
                         if selected[2] == "WF"
