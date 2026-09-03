@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.5] - 2026-09-03
+
+- helper zapisuje przy starcie `mojV Auth Helper version=<wersja>`,
+- numer wersji pochodzi z `MOJV_HELPER_VERSION`, czyli z dokładnie uruchomionego obrazu,
+- log startowy nie zawiera loginu, hasła, cookies ani tokenów.
+
 ## [0.1.4] - 2026-09-03
 
 - poprawiono przejście z dashboardu do dziennika: helper akceptuje poprawne przekierowanie na host ucznia bez wymagania ścieżki `/App/...`,
