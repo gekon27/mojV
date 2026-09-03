@@ -85,6 +85,12 @@ class _Session:
         raise AssertionError(url)
 
 
+class _VerificationFailureSession(_Session):
+    def post(self, url, **kwargs):
+        self.calls.append(("POST", url, kwargs))
+        return _Response(503, {"error": "browser_verification_failed"})
+
+
 def test_gateway_discovers_running_helper_and_reads_account() -> None:
     helper = _load()
 
@@ -116,5 +122,16 @@ def test_gateway_requires_supervisor_token() -> None:
         gateway = helper.HelperGateway(_Session(), supervisor_token="")
         with pytest.raises(helper.HelperUnavailable):
             await gateway.async_health()
+
+    asyncio.run(run())
+
+
+def test_browser_verification_failure_is_not_reported_as_missing_helper() -> None:
+    helper = _load()
+
+    async def run():
+        gateway = helper.HelperGateway(_VerificationFailureSession(), supervisor_token="token")
+        with pytest.raises(helper.HelperRequestError):
+            await gateway.async_account("alias", "secret")
 
     asyncio.run(run())
