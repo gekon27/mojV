@@ -118,7 +118,7 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema = vol.Schema(
             {
                 vol.Required(CONF_USERNAME): selector.TextSelector(
-                    selector.TextSelectorConfig(type=selector.TextSelectorType.EMAIL)
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
                 ),
                 vol.Required(CONF_PASSWORD): selector.TextSelector(
                     selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
