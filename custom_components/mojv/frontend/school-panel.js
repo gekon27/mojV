@@ -4,73 +4,574 @@ class MojVSchoolPanel extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._hass = null;
     this._data = null;
-    this._timer = null;
     this._error = null;
     this._activeStudentId = null;
+    this._activeView = "today";
+    this._weekOffset = 0;
+    this._ticker = null;
+    this._refreshing = false;
+    this._shellBuilt = false;
+    this._lastCurrentKey = null;
   }
 
   set hass(value) {
     this._hass = value;
-    if (!this._data) this._refresh();
+    if (this.isConnected && !this._data && !this._refreshing) {
+      this._refresh();
+    }
   }
 
   set narrow(value) { this._narrow = value; }
   set panel(value) { this._panel = value; }
 
   connectedCallback() {
-    this._render();
-    this._timer = window.setInterval(() => this._refresh(), 30000);
-    this._refresh();
+    this._buildShell();
+    if (!this._ticker) {
+      this._ticker = window.setInterval(() => this._tickClock(), 10000);
+    }
+    this._tickClock();
+    if (this._hass && !this._data && !this._refreshing) {
+      this._refresh();
+    }
   }
 
   disconnectedCallback() {
-    if (this._timer) window.clearInterval(this._timer);
+    if (this._ticker) {
+      window.clearInterval(this._ticker);
+      this._ticker = null;
+    }
+  }
+
+  _buildShell() {
+    if (this._shellBuilt) return;
+    this.shadowRoot.innerHTML = `
+      <style>${this._styles()}</style>
+      <div class="app-shell">
+        <header class="topbar">
+          <div class="brand-block">
+            <img src="/mojv-static/mojv-logo.svg" alt="mojV" class="brand-logo">
+            <div class="brand-copy">
+              <div class="eyebrow">mojV</div>
+              <h1>Szkoła</h1>
+              <p>Plan, obecność i bieżące informacje w jednym miejscu</p>
+            </div>
+          </div>
+          <div class="top-actions">
+            <div class="sync-box">
+              <span id="clock-label">--:--</span>
+              <small id="sync-label">Dane jeszcze niepobrane</small>
+            </div>
+            <button id="refresh" class="icon-button" type="button" aria-label="Odśwież dane" title="Odśwież dane">↻</button>
+          </div>
+        </header>
+
+        <div id="student-nav" class="student-nav" aria-label="Wybór dziecka"></div>
+        <nav id="view-nav" class="view-nav" aria-label="Widok panelu"></nav>
+        <main id="view-content" class="view-content" aria-live="polite">
+          <section class="empty-state"><strong>Ładowanie mojV…</strong><span>Pobieram dane z Home Assistant.</span></section>
+        </main>
+      </div>`;
+
+    this.shadowRoot.addEventListener("click", (event) => {
+      const target = event.target.closest("button");
+      if (!target) return;
+
+      if (target.id === "refresh") {
+        this._refresh();
+        return;
+      }
+
+      if (target.dataset.student) {
+        this._activeStudentId = target.dataset.student;
+        this._weekOffset = 0;
+        this._lastCurrentKey = null;
+        this._renderNavigation();
+        this._renderActiveView();
+        return;
+      }
+
+      if (target.dataset.view) {
+        this._activeView = target.dataset.view;
+        this._lastCurrentKey = null;
+        this._renderNavigation();
+        this._renderActiveView();
+        return;
+      }
+
+      if (target.dataset.week) {
+        this._changeWeek(Number(target.dataset.week));
+      }
+    });
+
+    this._shellBuilt = true;
   }
 
   async _refresh() {
-    if (!this._hass) return;
+    if (!this._hass || this._refreshing) return;
+    this._refreshing = true;
+    this._setRefreshBusy(true);
     try {
-      this._data = await this._hass.callWS({ type: "mojv/panel" });
-      const students = this._data?.students || [];
-      if (!students.some((student) => student.id === this._activeStudentId)) {
-        this._activeStudentId = students[0]?.id || null;
-      }
+      const payload = await this._hass.callWS({ type: "mojv/panel" });
+      this._applyPayload(payload);
       this._error = null;
     } catch (error) {
       this._error = String(error);
+      const content = this.shadowRoot.querySelector("#view-content");
+      if (content) {
+        content.innerHTML = `<section class="empty-state error"><strong>Nie udało się odświeżyć panelu</strong><span>${this._e(this._error)}</span></section>`;
+      }
+    } finally {
+      this._refreshing = false;
+      this._setRefreshBusy(false);
     }
-    this._render();
   }
 
-  _e(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+  _applyPayload(payload) {
+    this._data = payload || { students: [] };
+    const students = this._data.students || [];
+    if (!students.some((student) => student.id === this._activeStudentId)) {
+      this._activeStudentId = students[0]?.id || null;
+    }
+    this._lastCurrentKey = null;
+    this._renderSyncLabel();
+    this._renderNavigation();
+    this._renderActiveView();
   }
 
-  _time(value) {
-    if (!value) return "—";
-    return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  _setRefreshBusy(busy) {
+    const button = this.shadowRoot.querySelector("#refresh");
+    if (!button) return;
+    button.disabled = busy;
+    button.classList.toggle("busy", busy);
+    button.textContent = busy ? "…" : "↻";
   }
 
-  _date(value, withYear = false) {
-    if (!value) return "—";
-    return new Date(value).toLocaleDateString([], withYear
-      ? { day: "2-digit", month: "2-digit", year: "numeric" }
-      : { day: "2-digit", month: "2-digit" });
+  _renderSyncLabel() {
+    const label = this.shadowRoot.querySelector("#sync-label");
+    if (!label) return;
+    label.textContent = this._data?.updated_at
+      ? `Dane: ${this._time(this._data.updated_at)}`
+      : "Dane jeszcze niepobrane";
   }
 
-  _longDate(value) {
-    const date = value ? new Date(value) : new Date();
-    const text = date.toLocaleDateString("pl-PL", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
+  _activeStudent() {
+    const students = this._data?.students || [];
+    return students.find((student) => student.id === this._activeStudentId) || students[0] || null;
+  }
+
+  _availableViews(student) {
+    const views = [
+      ["today", "Dzisiaj", "●"],
+      ["schedule", "Plan", "▦"],
+      ["attendance", "Frekwencja", "✓"],
+    ];
+    if ((student?.grades || []).length) views.push(["grades", "Oceny", "5"]);
+    if ((student?.remarks || []).length) views.push(["remarks", "Uwagi", "!"]);
+    return views;
+  }
+
+  _renderNavigation() {
+    const students = this._data?.students || [];
+    const studentNav = this.shadowRoot.querySelector("#student-nav");
+    const viewNav = this.shadowRoot.querySelector("#view-nav");
+    if (!studentNav || !viewNav) return;
+
+    studentNav.innerHTML = students.length > 1
+      ? students.map((student, index) => {
+        const active = student.id === this._activeStudentId;
+        const initial = (student.name || `D${index + 1}`).trim().charAt(0).toUpperCase();
+        return `<button type="button" class="student-chip ${active ? "active" : ""}" data-student="${this._e(student.id)}" aria-pressed="${active}">
+          <span class="avatar">${this._e(initial)}</span>
+          <span class="student-copy"><strong>${this._e(student.name)}</strong><small>${this._e(student.class || "")}</small></span>
+        </button>`;
+      }).join("")
+      : "";
+
+    const student = this._activeStudent();
+    const views = this._availableViews(student);
+    if (!views.some(([id]) => id === this._activeView)) {
+      this._activeView = "today";
+    }
+    viewNav.innerHTML = views.map(([id, label, icon]) => {
+      const active = id === this._activeView;
+      return `<button type="button" class="view-tab ${active ? "active" : ""}" data-view="${id}" aria-current="${active ? "page" : "false"}">
+        <span>${icon}</span>${label}
+      </button>`;
+    }).join("");
+  }
+
+  _renderActiveView() {
+    const content = this.shadowRoot.querySelector("#view-content");
+    if (!content) return;
+
+    if (this._error) {
+      content.innerHTML = `<section class="empty-state error"><strong>Błąd panelu</strong><span>${this._e(this._error)}</span></section>`;
+      return;
+    }
+
+    const student = this._activeStudent();
+    if (!student) {
+      content.innerHTML = `<section class="empty-state"><strong>Brak danych ucznia</strong><span>Odśwież panel po uruchomieniu integracji.</span></section>`;
+      return;
+    }
+
+    if (this._activeView === "schedule") {
+      content.innerHTML = this._renderSchedule(student);
+      window.requestAnimationFrame(() => this._positionTimeLine());
+    } else if (this._activeView === "attendance") {
+      content.innerHTML = this._renderAttendance(student);
+    } else if (this._activeView === "grades") {
+      content.innerHTML = this._renderGrades(student);
+    } else if (this._activeView === "remarks") {
+      content.innerHTML = this._renderRemarks(student);
+    } else {
+      content.innerHTML = this._renderToday(student);
+      this._lastCurrentKey = this._lessonKey(this._currentLesson(student));
+      this._updateTodayLive();
+    }
+  }
+
+  _renderToday(student) {
+    const now = new Date();
+    const current = this._currentLesson(student, now);
+    const next = this._nextLesson(student, now);
+    const lessons = this._todayLessons(student, now);
+    const [attendanceText, attendanceClass, attendanceMark] = this._attendance(current?.attendance);
+    const alerts = current?.alerts || [];
+    const completed = lessons.filter((lesson) => new Date(lesson.end) <= now).length;
+
+    return `<div class="today-layout">
+      <section class="hero-card card">
+        <div class="card-head">
+          <div><span class="kicker">Dzisiaj</span><h2>${this._e(this._longDate(now))}</h2></div>
+          <span class="class-pill">${this._e(student.class || "Uczeń")}</span>
+        </div>
+
+        <div class="lesson-hero">
+          <div class="lesson-primary">
+            <span class="kicker">Aktualna lekcja</span>
+            <h3 id="live-current-subject">${this._e(current?.subject || "Przerwa / brak lekcji")}</h3>
+            <div id="live-current-meta" class="lesson-meta">${current ? this._lessonMeta(current) : "Brak trwającej lekcji"}</div>
+            ${current?.teacher ? `<div class="teacher-line">${this._e(current.teacher)}</div>` : ""}
+          </div>
+          <div class="progress-wrap">
+            <div id="live-progress" class="progress-ring" style="--progress:${this._progress(current, now) * 3.6}deg">
+              <div><strong id="live-minutes">${current ? this._minutesToEnd(current, now) : "—"}</strong><span>${current ? "min do końca" : "przerwa"}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="next-card">
+          <div><span class="kicker">Następna</span><strong>${this._e(next?.subject || "Brak kolejnej lekcji")}</strong></div>
+          <span>${next ? `${this._time(next.start)}–${this._time(next.end)} · ${this._e(next.room || "bez sali")}` : ""}</span>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric ${attendanceClass}"><span>${this._e(attendanceMark)}</span><div><small>Obecność</small><strong id="live-attendance">${this._e(current ? attendanceText : "Poza lekcją")}</strong></div></article>
+          <article class="metric"><span>№</span><div><small>Lekcja</small><strong id="live-lesson-number">${this._e(current?.number || "—")}</strong></div></article>
+          <article class="metric"><span>✓</span><div><small>Postęp dnia</small><strong>${completed}/${lessons.length}</strong></div></article>
+        </div>
+      </section>
+
+      <section class="card day-card">
+        <div class="section-head"><div><span class="kicker">Plan dnia</span><h2>${lessons.length} lekcji</h2></div><span>${this._e(student.name)}</span></div>
+        <div class="timeline-list">
+          ${lessons.length ? lessons.map((lesson) => this._todayLessonRow(lesson, current)).join("") : `<div class="mini-empty">Brak lekcji na dziś.</div>`}
+        </div>
+      </section>
+
+      <section class="card alerts-card">
+        <div class="section-head"><div><span class="kicker">Bieżące</span><h2>Informacje</h2></div></div>
+        ${alerts.length ? `<div class="alert-list">${alerts.map((alert) => `<article class="alert-row"><span>${alert.kind === "absence" ? "×" : alert.kind === "late" ? "!" : "⌛"}</span><div><strong>${this._e(alert.text)}</strong><small>${this._time(now)}</small></div></article>`).join("")}</div>` : `<div class="mini-empty">Brak bieżących alertów.</div>`}
+      </section>
+    </div>`;
+  }
+
+  _todayLessonRow(lesson, current) {
+    const [text, cls, mark] = this._attendance(lesson.attendance);
+    const isCurrent = current && this._lessonKey(current) === this._lessonKey(lesson);
+    return `<article class="timeline-row ${isCurrent ? "current" : ""} ${lesson.cancelled ? "cancelled" : ""}">
+      <div class="timeline-time">${this._time(lesson.start)}<small>${this._time(lesson.end)}</small></div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-copy">
+        <div><strong>${this._e(lesson.subject)}</strong>${lesson.replacement ? `<span class="badge warn">Zastępstwo</span>` : ""}${lesson.cancelled ? `<span class="badge bad">Odwołana</span>` : ""}</div>
+        <span>Lekcja ${this._e(lesson.number)} · ${this._e(lesson.room || "bez sali")}${lesson.teacher ? ` · ${this._e(lesson.teacher)}` : ""}</span>
+      </div>
+      <div class="attendance-dot ${cls}" title="${this._e(text)}">${this._e(mark)}</div>
+    </article>`;
+  }
+
+  _renderSchedule(student) {
+    const days = this._weekDays(student, this._weekOffset);
+    const slots = this._scheduleSlots(days);
+    const weekStart = this._startOfWeek(this._weekOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 4);
+
+    const rows = slots.map((slot) => {
+      const startMinute = this._minuteOfDay(slot.start);
+      const endMinute = this._minuteOfDay(slot.end);
+      const cells = days.map((day) => {
+        const lessons = (day.lessons || []).filter((lesson) => lesson.start === slot.start && lesson.end === slot.end);
+        return `<td class="schedule-cell ${day.today && this._weekOffset === 0 ? "today-column" : ""}">${lessons.map((lesson) => this._scheduleLesson(lesson)).join("")}</td>`;
+      }).join("");
+      return `<tr class="schedule-row" data-start-minute="${startMinute}" data-end-minute="${endMinute}">
+        <th class="time-cell"><strong>${this._time(slot.start)}</strong><span>${this._time(slot.end)}</span></th>${cells}
+      </tr>`;
+    }).join("");
+
+    return `<section class="card schedule-card">
+      <div class="schedule-toolbar">
+        <div>
+          <span class="kicker">Plan lekcji</span>
+          <h2>${this._e(this._dateRange(weekStart, weekEnd))}</h2>
+        </div>
+        <div class="week-controls" aria-label="Zmiana tygodnia">
+          <button type="button" class="week-button" data-week="-1" ${this._weekOffset <= -1 ? "disabled" : ""}>‹</button>
+          <button type="button" class="week-current" data-week="0">${this._weekOffset === 0 ? "Bieżący tydzień" : "Dzisiaj"}</button>
+          <button type="button" class="week-button" data-week="1" ${this._weekOffset >= 1 ? "disabled" : ""}>›</button>
+        </div>
+      </div>
+      <div class="schedule-scroll">
+        ${slots.length ? `<div class="schedule-canvas">
+          <div id="time-line" class="time-line"><span id="time-line-label">--:--</span></div>
+          <table class="schedule-table">
+            <thead><tr><th class="time-head">Godzina</th>${days.map((day) => `<th class="day-head ${day.today && this._weekOffset === 0 ? "today" : ""}"><strong>${this._e(day.shortLabel)}</strong><span>${this._e(this._date(day.date))}</span></th>`).join("")}</tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>` : `<div class="mini-empty roomy">Brak planu w wybranym tygodniu.</div>`}
+      </div>
+    </section>`;
+  }
+
+  _scheduleLesson(lesson) {
+    const [text, cls, mark] = this._attendance(lesson.attendance);
+    return `<div class="schedule-lesson ${lesson.cancelled ? "cancelled" : ""}" data-lesson-key="${this._e(this._lessonKey(lesson))}" data-start="${this._e(lesson.start)}" data-end="${this._e(lesson.end)}">
+      <div class="schedule-lesson-top"><span class="lesson-number">${this._e(lesson.number)}</span><strong>${this._e(lesson.subject)}</strong><span class="attendance-mini ${cls}" title="${this._e(text)}">${this._e(mark)}</span></div>
+      <div class="schedule-lesson-meta">${this._e(lesson.room || "bez sali")}${lesson.teacher ? ` · ${this._e(lesson.teacher)}` : ""}</div>
+      <div class="badge-row">${lesson.replacement ? `<span class="badge warn">Zastępstwo</span>` : ""}${lesson.cancelled ? `<span class="badge bad">Odwołana</span>` : ""}</div>
+    </div>`;
+  }
+
+  _renderAttendance(student) {
+    const summary = student.attendance_summary || {};
+    const statuses = [
+      ["present", "Obecności", "✓", "good"],
+      ["absent", "Nieobecności", "×", "bad"],
+      ["excused_absence", "Usprawiedliwione", "U", "neutral"],
+      ["late", "Spóźnienia", "!", "warn"],
+      ["released", "Zwolnienia", "Z", "neutral"],
+    ];
+    const events = this._allLessons(student)
+      .filter((lesson) => !lesson.cancelled && !["not_recorded", "present"].includes(lesson.attendance))
+      .sort((a, b) => new Date(b.start) - new Date(a.start))
+      .slice(0, 30);
+
+    return `<div class="attendance-layout">
+      <section class="attendance-summary">
+        ${statuses.map(([key, label, mark, cls]) => `<article class="summary-card ${cls}"><span>${mark}</span><div><strong>${Number(summary[key] || 0)}</strong><small>${label}</small></div></article>`).join("")}
+      </section>
+      <section class="card attendance-list-card">
+        <div class="section-head"><div><span class="kicker">Frekwencja</span><h2>Ostatnie wpisy</h2></div><span>${this._e(student.name)}</span></div>
+        ${events.length ? `<div class="attendance-list">${events.map((lesson) => {
+          const [text, cls, mark] = this._attendance(lesson.attendance);
+          return `<article class="attendance-row"><span class="attendance-dot ${cls}">${this._e(mark)}</span><div><strong>${this._e(text)}</strong><span>${this._e(lesson.subject)} · lekcja ${this._e(lesson.number)}</span></div><time>${this._e(this._date(lesson.start, true))}<small>${this._time(lesson.start)}</small></time></article>`;
+        }).join("")}</div>` : `<div class="mini-empty roomy">Brak nieobecności, spóźnień lub zwolnień w pobranym zakresie.</div>`}
+      </section>
+    </div>`;
+  }
+
+  _renderGrades(student) {
+    const grades = [...(student.grades || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+    return `<section class="card list-view-card">
+      <div class="section-head"><div><span class="kicker">Oceny</span><h2>Najnowsze wpisy</h2></div><span>${grades.length}</span></div>
+      <div class="data-list">${grades.map((grade) => `<article class="data-row"><div class="grade-badge">${this._e(grade.value)}</div><div><strong>${this._e(grade.subject)}</strong><span>${this._e(grade.description || "Bez opisu")}</span></div><time>${this._e(this._date(grade.date, true))}</time></article>`).join("")}</div>
+    </section>`;
+  }
+
+  _renderRemarks(student) {
+    const remarks = [...(student.remarks || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+    return `<section class="card list-view-card">
+      <div class="section-head"><div><span class="kicker">Uwagi</span><h2>Ostatnie wpisy</h2></div><span>${remarks.length}</span></div>
+      <div class="data-list">${remarks.map((remark) => `<article class="data-row"><div class="remark-badge">!</div><div><strong>${this._e(remark.category || "Informacja")}</strong><span>${this._e(remark.text)}</span><small>${this._e(remark.author || "")}</small></div><time>${this._e(this._date(remark.date, true))}</time></article>`).join("")}</div>
+    </section>`;
+  }
+
+  _changeWeek(delta) {
+    if (delta === 0) this._weekOffset = 0;
+    else this._weekOffset = Math.max(-1, Math.min(1, this._weekOffset + delta));
+    if (this._activeView === "schedule") this._renderActiveView();
+  }
+
+  _weekDays(student, offset) {
+    const start = this._startOfWeek(offset);
+    const source = new Map((student.week || []).map((day) => [day.date, day]));
+    const labels = ["Pon", "Wt", "Śr", "Czw", "Pt"];
+    const result = [];
+    const todayKey = this._dateKey(new Date());
+    for (let index = 0; index < 5; index += 1) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      const key = this._dateKey(date);
+      const original = source.get(key);
+      result.push({
+        date: key,
+        shortLabel: labels[index],
+        today: key === todayKey,
+        lessons: original?.lessons || [],
+      });
+    }
+    return result;
+  }
+
+  _scheduleSlots(days) {
+    const slots = new Map();
+    for (const day of days) {
+      for (const lesson of day.lessons || []) {
+        const key = `${lesson.start}|${lesson.end}`;
+        if (!slots.has(key)) slots.set(key, { start: lesson.start, end: lesson.end });
+      }
+    }
+    return [...slots.values()].sort((a, b) => new Date(a.start) - new Date(b.start));
+  }
+
+  _startOfWeek(offset = 0) {
+    const now = new Date();
+    const result = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekday = result.getDay() || 7;
+    result.setDate(result.getDate() - weekday + 1 + offset * 7);
+    result.setHours(0, 0, 0, 0);
+    return result;
+  }
+
+  _allLessons(student) {
+    const lessons = [];
+    const seen = new Set();
+    for (const day of student.week || []) {
+      for (const lesson of day.lessons || []) {
+        const key = this._lessonKey(lesson);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        lessons.push(lesson);
+      }
+    }
+    return lessons.sort((a, b) => new Date(a.start) - new Date(b.start));
+  }
+
+  _todayLessons(student, now = new Date()) {
+    const key = this._dateKey(now);
+    return this._allLessons(student).filter((lesson) => this._dateKey(new Date(lesson.start)) === key);
+  }
+
+  _currentLesson(student, now = new Date()) {
+    return this._allLessons(student).find((lesson) => !lesson.cancelled && new Date(lesson.start) <= now && now < new Date(lesson.end)) || null;
+  }
+
+  _nextLesson(student, now = new Date()) {
+    return this._allLessons(student).find((lesson) => !lesson.cancelled && new Date(lesson.start) > now) || null;
+  }
+
+  _tickClock() {
+    const clock = this.shadowRoot.querySelector("#clock-label");
+    if (clock) clock.textContent = this._time(new Date());
+    if (!this._data) return;
+
+    if (this._activeView === "today") {
+      this._updateTodayLive();
+    } else if (this._activeView === "schedule") {
+      this._updateScheduleCurrentClasses();
+      window.requestAnimationFrame(() => this._positionTimeLine());
+    }
+  }
+
+  _updateTodayLive() {
+    const student = this._activeStudent();
+    if (!student) return;
+    const now = new Date();
+    const current = this._currentLesson(student, now);
+    const currentKey = this._lessonKey(current);
+    if (this._lastCurrentKey !== null && this._lastCurrentKey !== currentKey) {
+      this._lastCurrentKey = currentKey;
+      this._renderActiveView();
+      return;
+    }
+    this._lastCurrentKey = currentKey;
+
+    const minutes = this.shadowRoot.querySelector("#live-minutes");
+    const progress = this.shadowRoot.querySelector("#live-progress");
+    if (minutes) minutes.textContent = current ? String(this._minutesToEnd(current, now)) : "—";
+    if (progress) progress.style.setProperty("--progress", `${this._progress(current, now) * 3.6}deg`);
+  }
+
+  _updateScheduleCurrentClasses() {
+    const now = new Date();
+    this.shadowRoot.querySelectorAll(".schedule-lesson").forEach((element) => {
+      const start = new Date(element.dataset.start);
+      const end = new Date(element.dataset.end);
+      element.classList.toggle("current", this._weekOffset === 0 && start <= now && now < end);
     });
-    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  _positionTimeLine() {
+    const line = this.shadowRoot.querySelector("#time-line");
+    if (!line || this._activeView !== "schedule" || this._weekOffset !== 0) {
+      if (line) line.style.display = "none";
+      return;
+    }
+
+    const now = new Date();
+    const weekday = now.getDay();
+    if (weekday < 1 || weekday > 5) {
+      line.style.display = "none";
+      return;
+    }
+
+    const minute = now.getHours() * 60 + now.getMinutes();
+    const rows = [...this.shadowRoot.querySelectorAll(".schedule-row")];
+    const row = rows.find((candidate) => {
+      const start = Number(candidate.dataset.startMinute);
+      const end = Number(candidate.dataset.endMinute);
+      return minute >= start && minute <= end;
+    });
+    if (!row || row.offsetHeight <= 0) {
+      line.style.display = "none";
+      return;
+    }
+
+    const start = Number(row.dataset.startMinute);
+    const end = Number(row.dataset.endMinute);
+    const ratio = end > start ? (minute - start) / (end - start) : 0;
+    line.style.top = `${row.offsetTop + Math.max(0, Math.min(1, ratio)) * row.offsetHeight}px`;
+    line.style.display = "block";
+    const label = this.shadowRoot.querySelector("#time-line-label");
+    if (label) label.textContent = this._time(now);
+  }
+
+  _lessonKey(lesson) {
+    if (!lesson) return "";
+    return `${lesson.start || ""}|${lesson.end || ""}|${lesson.number || ""}|${lesson.subject || ""}`;
+  }
+
+  _lessonMeta(lesson) {
+    return `Lekcja ${this._e(lesson.number)} · ${this._time(lesson.start)}–${this._time(lesson.end)} · ${this._e(lesson.room || "bez sali")}`;
+  }
+
+  _minutesToEnd(lesson, now = new Date()) {
+    if (!lesson) return 0;
+    return Math.max(0, Math.ceil((new Date(lesson.end) - now) / 60000));
+  }
+
+  _progress(lesson, now = new Date()) {
+    if (!lesson) return 0;
+    const start = new Date(lesson.start).getTime();
+    const end = new Date(lesson.end).getTime();
+    if (end <= start) return 0;
+    return Math.max(0, Math.min(100, Math.round(((now.getTime() - start) / (end - start)) * 100)));
+  }
+
+  _minuteOfDay(value) {
+    const date = new Date(value);
+    return date.getHours() * 60 + date.getMinutes();
   }
 
   _attendance(value) {
@@ -88,354 +589,275 @@ class MojVSchoolPanel extends HTMLElement {
     return map[value] || [value || "Brak wpisu", "muted", "•"];
   }
 
-  _studentTabs(students) {
-    if (students.length < 2) return "";
-    return `<nav class="student-tabs" aria-label="Wybór dziecka">
-      ${students.map((student, index) => `
-        <button class="student-tab ${student.id === this._activeStudentId ? "active" : ""}"
-                data-student="${this._e(student.id)}"
-                aria-pressed="${student.id === this._activeStudentId}">
-          <span class="avatar">${this._e((student.name || `D${index + 1}`).trim().charAt(0).toUpperCase())}</span>
-          <span><strong>${this._e(student.name)}</strong><small>${this._e(student.class || "")}</small></span>
-        </button>`).join("")}
-    </nav>`;
+  _e(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
   }
 
-  _week(student) {
-    const days = (student.week || []).filter((day) => {
-      const weekday = new Date(`${day.date}T12:00:00`).getDay();
-      return weekday >= 1 && weekday <= 5;
-    });
-    if (!days.length) return `<div class="empty">Brak planu tygodniowego</div>`;
-
-    return `<div class="week-grid">${days.map((day) => {
-      const lessons = (day.lessons || []).map((lesson) => {
-        const [attendanceText, attendanceClass, attendanceMark] = this._attendance(lesson.attendance);
-        const change = lesson.cancelled ? "Odwołana" : lesson.replacement ? "Zastępstwo" : "";
-        return `<div class="week-lesson ${lesson.current ? "current" : ""} ${lesson.cancelled ? "cancelled" : ""}">
-          <div class="week-number">${this._e(lesson.number)}</div>
-          <div class="week-main">
-            <div class="week-subject">${this._e(lesson.subject)}</div>
-            <div class="week-meta">${this._time(lesson.start)}–${this._time(lesson.end)} · ${this._e(lesson.room || "bez sali")}</div>
-            ${change ? `<div class="change">${this._e(change)}</div>` : ""}
-          </div>
-          <div class="attendance-mark ${attendanceClass}" title="${this._e(attendanceText)}">${this._e(attendanceMark)}</div>
-        </div>`;
-      }).join("");
-      return `<section class="day ${day.today ? "today" : ""}">
-        <header class="day-head">
-          <strong>${this._e(day.label)}</strong>
-          <span>${this._e(this._date(day.date))}</span>
-        </header>
-        <div class="day-lessons">${lessons || `<div class="empty compact">Brak lekcji</div>`}</div>
-      </section>`;
-    }).join("")}</div>`;
+  _time(value) {
+    if (!value) return "—";
+    return new Date(value).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
   }
 
-  _progressRing(current) {
-    if (!current) {
-      return `<div class="progress-ring idle"><div><strong>—</strong><span>przerwa</span></div></div>`;
-    }
-    const progress = Math.max(0, Math.min(100, Number(current.progress_pct || 0)));
-    return `<div class="progress-ring" style="--progress:${progress * 3.6}deg">
-      <div><strong>${this._e(current.minutes_to_end)}</strong><span>min do końca</span></div>
-    </div>`;
+  _date(value, withYear = false) {
+    if (!value) return "—";
+    return new Date(value).toLocaleDateString("pl-PL", withYear
+      ? { day: "2-digit", month: "2-digit", year: "numeric" }
+      : { day: "2-digit", month: "2-digit" });
   }
 
-  _today(student) {
-    const current = student.current;
-    const next = student.next;
-    const [attendanceText, attendanceClass, attendanceMark] = this._attendance(current?.attendance);
-
-    return `<section class="panel-card today-card">
-      <div class="card-title">Dzisiaj <span>${this._e(this._longDate(this._data?.now))}</span></div>
-      <div class="now-row">
-        <div class="now-copy">
-          <span class="section-label">Aktualna lekcja</span>
-          <h2>${this._e(current?.subject || "Przerwa / brak lekcji")}</h2>
-          ${current ? `<div class="lesson-line"><strong>Lekcja ${this._e(current.number)}</strong><span>${this._time(current.start)}–${this._time(current.end)}</span><span>${this._e(current.room || "bez sali")}</span></div>` : ""}
-          ${current?.teacher ? `<div class="teacher">Nauczyciel: ${this._e(current.teacher)}</div>` : ""}
-        </div>
-        ${this._progressRing(current)}
-      </div>
-      <div class="next-row">
-        <span class="section-label">Następna lekcja</span>
-        ${next
-          ? `<div class="next-main"><strong>${this._e(next.subject)}</strong><span>${this._time(next.start)}–${this._time(next.end)} · ${this._e(next.room || "bez sali")}</span></div>`
-          : `<div class="next-main"><strong>Brak kolejnej lekcji</strong></div>`}
-      </div>
-      <div class="status-strip">
-        <div class="status-tile ${attendanceClass}"><span>${this._e(attendanceMark)}</span><div><small>Obecność</small><strong>${this._e(current ? attendanceText : "Poza lekcją")}</strong></div></div>
-        <div class="status-tile neutral"><span>№</span><div><small>Numer lekcji</small><strong>${this._e(current?.number || "—")}</strong></div></div>
-        <div class="status-tile neutral"><span>⌁</span><div><small>Dziś lekcji</small><strong>${this._e((student.lessons || []).length)}</strong></div></div>
-      </div>
-    </section>`;
+  _dateKey(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
 
-  _activity(student) {
-    const items = [];
-    for (const alert of student.current?.alerts || []) {
-      const kindMap = {
-        absence: ["bad", "×", "Nieobecność"],
-        late: ["warn", "!", "Spóźnienie"],
-        ending: ["info", "⌛", "Koniec lekcji"],
-      };
-      const [cls, mark, title] = kindMap[alert.kind] || ["info", "i", "Informacja"];
-      items.push({ cls, mark, title, text: alert.text, time: this._time(this._data?.now) });
-    }
-
-    for (const grade of (student.grades || []).slice(0, 2)) {
-      items.push({
-        cls: "ok",
-        mark: "✓",
-        title: `Nowa ocena · ${grade.value}`,
-        text: `${grade.subject}${grade.description ? ` — ${grade.description}` : ""}`,
-        time: this._date(grade.date),
-      });
-    }
-
-    for (const remark of (student.remarks || []).slice(0, 2)) {
-      items.push({
-        cls: "info",
-        mark: "✦",
-        title: remark.category || "Uwaga",
-        text: remark.text,
-        time: this._date(remark.date),
-      });
-    }
-
-    if (!items.length) {
-      return `<section class="panel-card activity-card"><div class="card-title">Powiadomienia</div><div class="empty">Brak nowych informacji</div></section>`;
-    }
-
-    return `<section class="panel-card activity-card">
-      <div class="card-title">Powiadomienia <span>${items.length}</span></div>
-      <div class="activity-list">${items.slice(0, 5).map((item) => `
-        <div class="activity-row">
-          <div class="activity-icon ${item.cls}">${this._e(item.mark)}</div>
-          <div class="activity-copy"><strong>${this._e(item.title)}</strong><span>${this._e(item.text)}</span></div>
-          <time>${this._e(item.time)}</time>
-        </div>`).join("")}</div>
-    </section>`;
+  _longDate(value) {
+    const date = value instanceof Date ? value : new Date(value || Date.now());
+    const text = date.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" });
+    return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
-  _grades(student) {
-    const grades = (student.grades || []).slice(0, 6);
-    return `<section class="panel-card list-card">
-      <div class="card-title">Oceny — ostatnie</div>
-      ${grades.length ? `<div class="compact-list">${grades.map((grade) => `
-        <div class="compact-row">
-          <div><strong>${this._e(grade.subject)}</strong><span>${this._e(grade.description || "")}</span></div>
-          <div class="grade-value">${this._e(grade.value)}</div>
-          <time>${this._e(this._date(grade.date))}</time>
-        </div>`).join("")}</div>` : `<div class="empty">Brak ocen do pokazania</div>`}
-    </section>`;
+  _dateRange(start, end) {
+    const startText = start.toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
+    const endText = end.toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" });
+    return `${startText} – ${endText}`;
   }
 
-  _remarks(student) {
-    const remarks = (student.remarks || []).slice(0, 5);
-    return `<section class="panel-card list-card">
-      <div class="card-title">Uwagi — ostatnie</div>
-      ${remarks.length ? `<div class="compact-list">${remarks.map((remark) => `
-        <div class="remark-row">
-          <span class="remark-dot ${String(remark.points || "").startsWith("-") ? "bad" : "info"}"></span>
-          <div><strong>${this._e(remark.category || "Uwaga")}</strong><span>${this._e(remark.text)}</span><small>${this._e(remark.author || "")}</small></div>
-          <time>${this._e(this._date(remark.date))}</time>
-        </div>`).join("")}</div>` : `<div class="empty">Brak uwag do pokazania</div>`}
-    </section>`;
-  }
-
-  _studentView(student) {
-    return `<div class="dashboard">
-      <section class="schedule-card panel-card">
-        <div class="card-title">Plan lekcji — cały tydzień <span>${this._e(student.class || "")}</span></div>
-        <div class="week-wrap">${this._week(student)}</div>
-      </section>
-      <div class="middle-grid">
-        ${this._today(student)}
-        ${this._activity(student)}
-      </div>
-      <div class="lower-grid">
-        ${this._grades(student)}
-        ${this._remarks(student)}
-      </div>
-    </div>`;
-  }
-
-  _bindEvents() {
-    this.shadowRoot.querySelector("#refresh")?.addEventListener("click", () => this._refresh());
-    this.shadowRoot.querySelectorAll("[data-student]").forEach((button) => {
-      button.addEventListener("click", () => {
-        this._activeStudentId = button.dataset.student;
-        this._render();
-      });
-    });
-  }
-
-  _render() {
-    const students = this._data?.students || [];
-    const activeStudent = students.find((student) => student.id === this._activeStudentId) || students[0];
-    const body = this._error
-      ? `<div class="message error-message">Błąd panelu: ${this._e(this._error)}</div>`
-      : activeStudent
-        ? this._studentView(activeStudent)
-        : `<div class="message">Ładowanie danych mojV…</div>`;
-
-    this.shadowRoot.innerHTML = `<style>
+  _styles() {
+    return `
       :host {
         display:block;
         min-height:100%;
-        color:#f5f8fc;
-        background:
-          radial-gradient(circle at 12% -20%, rgba(36,130,255,.16), transparent 34%),
-          linear-gradient(180deg,#06111c 0%,#081521 52%,#07111a 100%);
-        font-family:var(--paper-font-body1_-_font-family, Inter, system-ui, sans-serif);
-        --accent:#2d8cff;
-        --surface:#0f1b27;
-        --surface-2:#132231;
-        --surface-3:#182938;
-        --line:rgba(255,255,255,.085);
-        --muted:#94a3b5;
-        --success:#53d769;
-        --danger:#ff5f5f;
-        --warning:#ffad32;
-        --info:#42a5ff;
+        color:var(--primary-text-color,#e9eef5);
+        background:var(--primary-background-color,#0b1118);
+        font-family:var(--paper-font-body1_-_font-family,Inter,system-ui,sans-serif);
+        --mv-accent:var(--primary-color,#3f8cff);
+        --mv-card:var(--ha-card-background,var(--card-background-color,#151d27));
+        --mv-soft:var(--secondary-background-color,rgba(127,127,127,.09));
+        --mv-line:var(--divider-color,rgba(127,127,127,.2));
+        --mv-muted:var(--secondary-text-color,#91a0b2);
+        --mv-good:#35b86b;
+        --mv-bad:#e85b61;
+        --mv-warn:#e7a633;
+        --mv-radius:18px;
       }
       * { box-sizing:border-box; }
-      button { font:inherit; }
-      .shell { max-width:1660px; margin:0 auto; padding:20px 24px 34px; }
-      .topbar { min-height:70px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
-      .brand { display:flex; align-items:center; gap:14px; min-width:0; }
-      .brand img { width:46px; height:46px; object-fit:contain; filter:drop-shadow(0 8px 18px rgba(34,132,255,.18)); }
+      button { font:inherit; color:inherit; }
+      .app-shell { max-width:1560px; margin:0 auto; padding:18px 22px 36px; }
+      .topbar { display:flex; align-items:center; justify-content:space-between; gap:20px; min-height:76px; margin-bottom:12px; }
+      .brand-block { display:flex; align-items:center; min-width:0; gap:13px; }
+      .brand-logo { width:48px; height:48px; object-fit:contain; }
       .brand-copy { min-width:0; }
-      .brand-copy h1 { margin:0; font-size:27px; font-weight:780; letter-spacing:-.02em; }
-      .brand-copy div { margin-top:3px; color:var(--muted); font-size:12px; }
-      .top-actions { display:flex; align-items:center; gap:12px; color:var(--muted); font-size:12px; white-space:nowrap; }
-      .refresh { width:38px; height:38px; display:grid; place-items:center; border:1px solid var(--line); border-radius:11px; background:var(--surface); color:#dbe8f8; cursor:pointer; transition:.18s ease; }
-      .refresh:hover { border-color:rgba(45,140,255,.5); transform:translateY(-1px); }
-      .student-tabs { display:flex; gap:8px; margin:4px 0 16px; padding:5px; border:1px solid var(--line); border-radius:14px; background:rgba(15,27,39,.88); overflow-x:auto; }
-      .student-tab { min-width:180px; border:0; color:#cdd8e6; background:transparent; border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:9px; text-align:left; cursor:pointer; position:relative; }
-      .student-tab::after { content:""; position:absolute; left:12px; right:12px; bottom:-5px; height:2px; border-radius:2px; background:transparent; }
-      .student-tab.active { color:white; background:rgba(45,140,255,.08); }
-      .student-tab.active::after { background:var(--accent); box-shadow:0 0 16px rgba(45,140,255,.65); }
-      .student-tab small { display:block; color:var(--muted); margin-top:2px; font-size:10px; }
-      .avatar { width:28px; height:28px; flex:0 0 auto; display:grid; place-items:center; border-radius:50%; color:#d7e9ff; background:linear-gradient(145deg,#1e75d9,#114378); font-weight:800; font-size:12px; }
-      .dashboard { display:grid; gap:14px; }
-      .panel-card { border:1px solid var(--line); background:linear-gradient(180deg,rgba(17,31,44,.98),rgba(12,24,35,.98)); border-radius:15px; box-shadow:0 18px 45px rgba(0,0,0,.18); overflow:hidden; }
-      .card-title { min-height:49px; padding:14px 17px; display:flex; justify-content:space-between; align-items:center; gap:12px; border-bottom:1px solid var(--line); font-size:15px; font-weight:750; }
-      .card-title span { color:var(--muted); font-size:11px; font-weight:550; }
-      .week-wrap { padding:10px; overflow:auto; }
-      .week-grid { display:grid; grid-template-columns:repeat(5,minmax(190px,1fr)); gap:7px; min-width:1010px; }
-      .day { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#0d1924; }
-      .day.today { border-color:rgba(45,140,255,.85); box-shadow:0 0 0 1px rgba(45,140,255,.24) inset; }
-      .day-head { height:40px; padding:0 11px; display:flex; align-items:center; justify-content:space-between; gap:8px; background:#142331; font-size:11px; }
-      .day.today .day-head { background:linear-gradient(180deg,#2789ee,#1b70c7); color:white; }
-      .day-head span { color:#93a6bb; }
-      .day.today .day-head span { color:#e9f4ff; }
-      .day-lessons { padding:5px; display:grid; gap:3px; }
-      .week-lesson { min-height:56px; padding:7px 6px; display:grid; grid-template-columns:22px 1fr 20px; gap:6px; align-items:start; border-radius:8px; border:1px solid transparent; }
-      .week-lesson:hover { background:#122230; }
-      .week-lesson.current { background:linear-gradient(90deg,rgba(45,140,255,.24),rgba(45,140,255,.08)); border-color:rgba(45,140,255,.62); }
-      .week-lesson.cancelled { opacity:.47; text-decoration:line-through; }
-      .week-number { color:#a7bbcf; font-weight:720; font-size:11px; padding-top:1px; }
-      .week-subject { font-weight:700; font-size:11px; line-height:1.28; }
-      .week-meta { color:var(--muted); font-size:9.5px; margin-top:4px; line-height:1.35; }
-      .change { margin-top:4px; color:var(--warning); font-size:9px; font-weight:700; }
-      .attendance-mark { width:20px; height:20px; border-radius:50%; display:grid; place-items:center; font-size:10px; font-weight:900; }
-      .middle-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(380px,.95fr); gap:14px; }
-      .today-card { min-height:350px; }
-      .now-row { padding:19px; display:flex; justify-content:space-between; align-items:center; gap:22px; }
-      .now-copy { min-width:0; }
-      .section-label { color:var(--accent); font-size:11px; font-weight:720; }
-      .now-copy h2 { margin:8px 0 11px; font-size:24px; letter-spacing:-.025em; }
-      .lesson-line { display:flex; flex-wrap:wrap; align-items:center; gap:7px 12px; color:#afbdcc; font-size:11px; }
-      .lesson-line strong { padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.06); color:#e7edf5; font-size:10px; }
-      .teacher { margin-top:8px; color:var(--muted); font-size:11px; }
-      .progress-ring { --progress:0deg; width:116px; height:116px; flex:0 0 auto; border-radius:50%; padding:9px; background:conic-gradient(var(--accent) var(--progress),rgba(255,255,255,.07) 0); box-shadow:0 0 24px rgba(45,140,255,.12); }
-      .progress-ring > div { width:100%; height:100%; border-radius:50%; display:grid; place-content:center; text-align:center; background:#0f1d29; border:1px solid rgba(255,255,255,.05); }
-      .progress-ring strong { font-size:31px; line-height:1; }
-      .progress-ring span { display:block; color:var(--muted); margin-top:6px; font-size:9px; }
-      .progress-ring.idle { background:rgba(255,255,255,.06); }
-      .next-row { margin:0 19px; padding:13px 14px; border:1px solid var(--line); border-radius:11px; background:#101e2a; }
-      .next-main { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:7px; }
-      .next-main span { color:var(--muted); font-size:10px; text-align:right; }
-      .status-strip { padding:12px 19px 18px; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-      .status-tile { min-height:62px; padding:9px 10px; border-radius:10px; border:1px solid var(--line); display:flex; align-items:center; gap:8px; background:#101d29; }
-      .status-tile > span { width:26px; height:26px; display:grid; place-items:center; border-radius:50%; font-weight:900; }
-      .status-tile small { display:block; color:var(--muted); font-size:9px; margin-bottom:2px; }
-      .status-tile strong { font-size:11px; }
-      .status-tile.ok > span { color:#07130a; background:var(--success); }
-      .status-tile.bad > span { color:white; background:var(--danger); }
-      .status-tile.warn > span { color:#1c1200; background:var(--warning); }
-      .status-tile.muted > span,.status-tile.neutral > span { color:#dce6ef; background:#263848; }
-      .activity-list { padding:4px 14px 12px; }
-      .activity-row { min-height:62px; display:grid; grid-template-columns:34px 1fr auto; gap:10px; align-items:center; border-bottom:1px solid var(--line); }
-      .activity-row:last-child { border-bottom:0; }
-      .activity-icon { width:30px; height:30px; display:grid; place-items:center; border-radius:50%; font-weight:900; }
-      .activity-icon.bad { background:var(--danger); color:white; }
-      .activity-icon.warn { background:var(--warning); color:#211400; }
-      .activity-icon.ok { background:#2c943b; color:white; }
-      .activity-icon.info { background:#276fc3; color:white; }
-      .activity-copy { min-width:0; }
-      .activity-copy strong { display:block; font-size:11px; }
-      .activity-copy span { display:block; color:var(--muted); margin-top:3px; font-size:9.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .activity-row time,.compact-row time,.remark-row time { color:#8394a6; font-size:9px; white-space:nowrap; }
-      .lower-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-      .compact-list { padding:4px 14px 11px; }
-      .compact-row { min-height:50px; display:grid; grid-template-columns:1fr 42px 44px; gap:10px; align-items:center; border-bottom:1px solid var(--line); }
-      .compact-row:last-child,.remark-row:last-child { border-bottom:0; }
-      .compact-row strong,.remark-row strong { display:block; font-size:11px; }
-      .compact-row span,.remark-row span,.remark-row small { display:block; color:var(--muted); margin-top:2px; font-size:9.5px; }
-      .grade-value { width:31px; height:31px; display:grid; place-items:center; border-radius:50%; background:#48620f; color:#dfff59; font-weight:850; }
-      .remark-row { min-height:58px; display:grid; grid-template-columns:10px 1fr 44px; gap:9px; align-items:center; border-bottom:1px solid var(--line); }
-      .remark-dot { width:7px; height:7px; border-radius:50%; background:var(--info); }
-      .remark-dot.bad { background:var(--danger); }
-      .empty,.message { padding:24px; color:var(--muted); }
-      .empty.compact { padding:9px; font-size:10px; }
-      .error-message { color:#ffb0b0; }
-      @media(max-width:1100px) {
-        .middle-grid { grid-template-columns:1fr; }
-        .activity-card { min-height:auto; }
+      .eyebrow,.kicker { color:var(--mv-accent); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.09em; }
+      .brand-copy h1 { margin:1px 0 0; font-size:27px; line-height:1; letter-spacing:-.025em; }
+      .brand-copy p { margin:6px 0 0; color:var(--mv-muted); font-size:12px; }
+      .top-actions { display:flex; align-items:center; gap:12px; }
+      .sync-box { text-align:right; display:grid; gap:2px; }
+      .sync-box > span { font-size:18px; font-weight:760; font-variant-numeric:tabular-nums; }
+      .sync-box small { color:var(--mv-muted); font-size:10px; }
+      .icon-button,.week-button,.week-current { min-width:44px; min-height:44px; border:1px solid var(--mv-line); background:var(--mv-card); border-radius:13px; cursor:pointer; transition:transform .16s ease,border-color .16s ease,background .16s ease; }
+      .icon-button:hover,.week-button:hover,.week-current:hover { transform:translateY(-1px); border-color:var(--mv-accent); }
+      .icon-button.busy { cursor:wait; }
+      button:disabled { opacity:.35; cursor:default; transform:none !important; }
+
+      .student-nav { display:flex; gap:8px; overflow-x:auto; scrollbar-width:thin; margin-bottom:10px; }
+      .student-nav:empty { display:none; }
+      .student-chip { min-width:170px; min-height:52px; padding:7px 12px; border:1px solid var(--mv-line); border-radius:15px; background:var(--mv-card); display:flex; align-items:center; gap:9px; cursor:pointer; text-align:left; }
+      .student-chip.active { border-color:color-mix(in srgb,var(--mv-accent) 65%,var(--mv-line)); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--mv-accent) 30%,transparent); background:color-mix(in srgb,var(--mv-accent) 8%,var(--mv-card)); }
+      .avatar { width:32px; height:32px; border-radius:50%; display:grid; place-items:center; flex:0 0 auto; background:color-mix(in srgb,var(--mv-accent) 20%,var(--mv-soft)); color:var(--mv-accent); font-weight:850; }
+      .student-copy strong,.student-copy small { display:block; }
+      .student-copy strong { font-size:12px; }
+      .student-copy small { margin-top:2px; color:var(--mv-muted); font-size:10px; }
+
+      .view-nav { display:flex; gap:4px; padding:4px; margin-bottom:14px; border:1px solid var(--mv-line); border-radius:15px; background:var(--mv-card); width:max-content; max-width:100%; overflow-x:auto; }
+      .view-tab { min-height:40px; padding:0 14px; border:0; border-radius:11px; background:transparent; color:var(--mv-muted); font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:7px; white-space:nowrap; }
+      .view-tab.active { color:var(--primary-text-color,#fff); background:color-mix(in srgb,var(--mv-accent) 15%,transparent); box-shadow:inset 0 -2px 0 var(--mv-accent); }
+      .view-tab > span { color:var(--mv-accent); }
+
+      .view-content { min-height:360px; }
+      .card { background:var(--mv-card); border:1px solid var(--mv-line); border-radius:var(--mv-radius); overflow:hidden; box-shadow:0 8px 28px rgba(0,0,0,.08); }
+      .empty-state { min-height:280px; display:grid; place-content:center; justify-items:center; gap:7px; color:var(--mv-muted); text-align:center; border:1px dashed var(--mv-line); border-radius:var(--mv-radius); }
+      .empty-state strong { color:var(--primary-text-color,#fff); font-size:17px; }
+      .empty-state.error strong { color:var(--mv-bad); }
+      .mini-empty { color:var(--mv-muted); font-size:12px; padding:14px 0; }
+      .mini-empty.roomy { padding:36px 18px; text-align:center; }
+      .class-pill { padding:5px 9px; border-radius:999px; background:var(--mv-soft); color:var(--mv-muted); font-size:10px; font-weight:700; }
+      .section-head,.card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:18px 19px; border-bottom:1px solid var(--mv-line); }
+      .section-head h2,.card-head h2 { margin:4px 0 0; font-size:18px; letter-spacing:-.02em; }
+      .section-head > span { color:var(--mv-muted); font-size:11px; }
+
+      .today-layout { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(330px,.65fr); grid-template-areas:"hero day" "hero alerts"; gap:14px; }
+      .hero-card { grid-area:hero; }
+      .day-card { grid-area:day; }
+      .alerts-card { grid-area:alerts; }
+      .lesson-hero { display:grid; grid-template-columns:1fr auto; gap:24px; align-items:center; padding:24px 20px 19px; }
+      .lesson-primary h3 { margin:7px 0 9px; font-size:29px; letter-spacing:-.035em; line-height:1.08; }
+      .lesson-meta,.teacher-line { color:var(--mv-muted); font-size:12px; line-height:1.5; }
+      .teacher-line { margin-top:5px; }
+      .progress-ring { --progress:0deg; width:124px; height:124px; border-radius:50%; padding:9px; background:conic-gradient(var(--mv-accent) var(--progress),var(--mv-soft) 0); }
+      .progress-ring > div { width:100%; height:100%; border-radius:50%; display:grid; place-content:center; text-align:center; background:var(--mv-card); border:1px solid var(--mv-line); }
+      .progress-ring strong { font-size:31px; line-height:1; font-variant-numeric:tabular-nums; }
+      .progress-ring span { color:var(--mv-muted); font-size:9px; margin-top:5px; }
+      .next-card { margin:0 19px 16px; padding:13px 14px; display:flex; justify-content:space-between; align-items:center; gap:14px; border:1px solid var(--mv-line); border-radius:13px; background:var(--mv-soft); }
+      .next-card strong { display:block; margin-top:4px; font-size:13px; }
+      .next-card > span { color:var(--mv-muted); font-size:10px; text-align:right; }
+      .metric-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:0 19px 19px; }
+      .metric { min-height:64px; padding:10px; display:flex; align-items:center; gap:9px; border:1px solid var(--mv-line); border-radius:13px; background:var(--mv-soft); }
+      .metric > span { width:30px; height:30px; display:grid; place-items:center; border-radius:50%; background:color-mix(in srgb,var(--mv-accent) 14%,transparent); color:var(--mv-accent); font-weight:900; }
+      .metric.ok > span { background:color-mix(in srgb,var(--mv-good) 20%,transparent); color:var(--mv-good); }
+      .metric.bad > span { background:color-mix(in srgb,var(--mv-bad) 20%,transparent); color:var(--mv-bad); }
+      .metric.warn > span { background:color-mix(in srgb,var(--mv-warn) 20%,transparent); color:var(--mv-warn); }
+      .metric small,.metric strong { display:block; }
+      .metric small { color:var(--mv-muted); font-size:9px; }
+      .metric strong { margin-top:2px; font-size:11px; }
+
+      .timeline-list { padding:7px 14px 13px; }
+      .timeline-row { min-height:58px; display:grid; grid-template-columns:48px 12px 1fr 26px; gap:8px; align-items:center; border-bottom:1px solid var(--mv-line); }
+      .timeline-row:last-child { border-bottom:0; }
+      .timeline-row.current { background:color-mix(in srgb,var(--mv-accent) 8%,transparent); margin:0 -8px; padding:0 8px; border-radius:10px; }
+      .timeline-row.cancelled { opacity:.5; }
+      .timeline-time { font-size:10px; font-weight:800; font-variant-numeric:tabular-nums; }
+      .timeline-time small { display:block; color:var(--mv-muted); margin-top:2px; font-size:9px; }
+      .timeline-dot { width:8px; height:8px; border-radius:50%; background:var(--mv-line); }
+      .timeline-row.current .timeline-dot { background:var(--mv-accent); box-shadow:0 0 0 4px color-mix(in srgb,var(--mv-accent) 16%,transparent); }
+      .timeline-copy { min-width:0; }
+      .timeline-copy > div { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+      .timeline-copy strong { font-size:11px; }
+      .timeline-copy > span { display:block; color:var(--mv-muted); margin-top:3px; font-size:9.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .attendance-dot,.attendance-mini { display:grid; place-items:center; border-radius:50%; font-weight:900; }
+      .attendance-dot { width:24px; height:24px; font-size:10px; }
+      .attendance-mini { width:20px; height:20px; font-size:9px; }
+      .attendance-dot.ok,.attendance-mini.ok { background:color-mix(in srgb,var(--mv-good) 18%,transparent); color:var(--mv-good); }
+      .attendance-dot.bad,.attendance-mini.bad { background:color-mix(in srgb,var(--mv-bad) 18%,transparent); color:var(--mv-bad); }
+      .attendance-dot.warn,.attendance-mini.warn { background:color-mix(in srgb,var(--mv-warn) 20%,transparent); color:var(--mv-warn); }
+      .attendance-dot.muted,.attendance-mini.muted { background:var(--mv-soft); color:var(--mv-muted); }
+      .badge { display:inline-flex; align-items:center; min-height:18px; padding:0 6px; border-radius:999px; font-size:8px; font-weight:800; }
+      .badge.warn { background:color-mix(in srgb,var(--mv-warn) 17%,transparent); color:var(--mv-warn); }
+      .badge.bad { background:color-mix(in srgb,var(--mv-bad) 17%,transparent); color:var(--mv-bad); }
+      .alert-list { padding:8px 14px 14px; }
+      .alert-row { min-height:54px; display:grid; grid-template-columns:30px 1fr; gap:9px; align-items:center; border-bottom:1px solid var(--mv-line); }
+      .alert-row:last-child { border-bottom:0; }
+      .alert-row > span { width:27px; height:27px; border-radius:50%; display:grid; place-items:center; background:color-mix(in srgb,var(--mv-accent) 15%,transparent); color:var(--mv-accent); font-weight:900; }
+      .alert-row strong,.alert-row small { display:block; }
+      .alert-row strong { font-size:11px; }
+      .alert-row small { color:var(--mv-muted); margin-top:2px; font-size:9px; }
+
+      .schedule-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:17px 18px; border-bottom:1px solid var(--mv-line); }
+      .schedule-toolbar h2 { margin:4px 0 0; font-size:18px; }
+      .week-controls { display:flex; align-items:center; gap:6px; }
+      .week-button { width:44px; padding:0; font-size:24px; }
+      .week-current { padding:0 14px; font-size:11px; font-weight:750; }
+      .schedule-scroll { width:100%; overflow-x:auto; overscroll-behavior-inline:contain; }
+      .schedule-canvas { position:relative; min-width:1040px; }
+      .schedule-table { width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; }
+      .schedule-table th,.schedule-table td { border-right:1px solid var(--mv-line); border-bottom:1px solid var(--mv-line); }
+      .schedule-table tr:last-child th,.schedule-table tr:last-child td { border-bottom:0; }
+      .schedule-table th:last-child,.schedule-table td:last-child { border-right:0; }
+      .time-head,.time-cell { width:84px; min-width:84px; text-align:center; background:color-mix(in srgb,var(--mv-soft) 65%,var(--mv-card)); }
+      .time-head { height:52px; color:var(--mv-muted); font-size:9px; text-transform:uppercase; letter-spacing:.08em; }
+      .day-head { height:52px; padding:7px; background:var(--mv-card); text-align:center; }
+      .day-head strong,.day-head span { display:block; }
+      .day-head strong { font-size:11px; }
+      .day-head span { color:var(--mv-muted); margin-top:3px; font-size:9px; }
+      .day-head.today { background:color-mix(in srgb,var(--mv-accent) 12%,var(--mv-card)); box-shadow:inset 0 -2px 0 var(--mv-accent); }
+      .time-cell { padding:8px 5px; vertical-align:top; }
+      .time-cell strong,.time-cell span { display:block; }
+      .time-cell strong { font-size:10px; }
+      .time-cell span { color:var(--mv-muted); margin-top:2px; font-size:9px; }
+      .schedule-cell { min-height:72px; padding:5px; vertical-align:top; background:var(--mv-card); }
+      .schedule-cell.today-column { background:color-mix(in srgb,var(--mv-accent) 3%,var(--mv-card)); }
+      .schedule-lesson { min-height:64px; padding:7px 8px; border:1px solid var(--mv-line); border-radius:10px; background:var(--mv-soft); transition:border-color .15s ease,background .15s ease; }
+      .schedule-lesson + .schedule-lesson { margin-top:4px; }
+      .schedule-lesson.current { border-color:var(--mv-accent); background:color-mix(in srgb,var(--mv-accent) 13%,var(--mv-soft)); box-shadow:inset 3px 0 0 var(--mv-accent); }
+      .schedule-lesson.cancelled { opacity:.48; }
+      .schedule-lesson-top { display:grid; grid-template-columns:20px 1fr 20px; gap:5px; align-items:start; }
+      .schedule-lesson-top strong { font-size:10.5px; line-height:1.25; }
+      .lesson-number { color:var(--mv-muted); font-size:9px; font-weight:800; }
+      .schedule-lesson-meta { color:var(--mv-muted); margin:4px 0 0 25px; font-size:8.5px; line-height:1.3; }
+      .badge-row { margin:4px 0 0 25px; display:flex; gap:4px; flex-wrap:wrap; }
+      .time-line { display:none; position:absolute; z-index:20; left:84px; right:0; height:2px; background:var(--mv-accent); pointer-events:none; box-shadow:0 0 8px color-mix(in srgb,var(--mv-accent) 55%,transparent); }
+      .time-line span { position:absolute; left:-73px; top:-10px; width:67px; height:21px; display:grid; place-items:center; border-radius:6px; background:var(--mv-accent); color:white; font-size:9px; font-weight:900; font-variant-numeric:tabular-nums; }
+
+      .attendance-layout { display:grid; gap:14px; }
+      .attendance-summary { display:grid; grid-template-columns:repeat(5,1fr); gap:9px; }
+      .summary-card { min-height:90px; padding:14px; display:flex; align-items:center; gap:12px; border:1px solid var(--mv-line); border-radius:16px; background:var(--mv-card); }
+      .summary-card > span { width:38px; height:38px; flex:0 0 auto; display:grid; place-items:center; border-radius:50%; background:var(--mv-soft); font-weight:900; }
+      .summary-card.good > span { color:var(--mv-good); background:color-mix(in srgb,var(--mv-good) 15%,transparent); }
+      .summary-card.bad > span { color:var(--mv-bad); background:color-mix(in srgb,var(--mv-bad) 15%,transparent); }
+      .summary-card.warn > span { color:var(--mv-warn); background:color-mix(in srgb,var(--mv-warn) 17%,transparent); }
+      .summary-card strong,.summary-card small { display:block; }
+      .summary-card strong { font-size:24px; line-height:1; }
+      .summary-card small { color:var(--mv-muted); margin-top:5px; font-size:9px; }
+      .attendance-list { padding:5px 16px 13px; }
+      .attendance-row { min-height:62px; display:grid; grid-template-columns:28px 1fr auto; gap:10px; align-items:center; border-bottom:1px solid var(--mv-line); }
+      .attendance-row:last-child { border-bottom:0; }
+      .attendance-row strong,.attendance-row span,.attendance-row time,.attendance-row time small { display:block; }
+      .attendance-row strong { font-size:11px; }
+      .attendance-row span { color:var(--mv-muted); margin-top:2px; font-size:9.5px; }
+      .attendance-row time { color:var(--mv-muted); text-align:right; font-size:9px; }
+      .attendance-row time small { margin-top:2px; }
+
+      .list-view-card { max-width:980px; }
+      .data-list { padding:5px 16px 13px; }
+      .data-row { min-height:66px; display:grid; grid-template-columns:42px 1fr auto; gap:11px; align-items:center; border-bottom:1px solid var(--mv-line); }
+      .data-row:last-child { border-bottom:0; }
+      .data-row strong,.data-row span,.data-row small { display:block; }
+      .data-row strong { font-size:12px; }
+      .data-row span,.data-row small { color:var(--mv-muted); margin-top:3px; font-size:9.5px; }
+      .data-row time { color:var(--mv-muted); font-size:9px; white-space:nowrap; }
+      .grade-badge,.remark-badge { width:38px; height:38px; display:grid; place-items:center; border-radius:11px; font-weight:900; }
+      .grade-badge { background:color-mix(in srgb,var(--mv-good) 18%,transparent); color:var(--mv-good); font-size:16px; }
+      .remark-badge { background:color-mix(in srgb,var(--mv-warn) 18%,transparent); color:var(--mv-warn); }
+
+      @media (max-width:1100px) {
+        .today-layout { grid-template-columns:1fr 1fr; grid-template-areas:"hero hero" "day alerts"; }
+        .attendance-summary { grid-template-columns:repeat(3,1fr); }
       }
-      @media(max-width:760px) {
-        .shell { padding:10px 10px 24px; }
-        .topbar { min-height:62px; }
-        .brand img { width:38px; height:38px; }
+      @media (max-width:760px) {
+        .app-shell { padding:10px 10px 26px; }
+        .topbar { min-height:64px; margin-bottom:8px; }
+        .brand-logo { width:40px; height:40px; }
         .brand-copy h1 { font-size:22px; }
-        .top-actions .sync-label { display:none; }
-        .student-tab { min-width:150px; padding:8px; }
-        .week-grid { min-width:910px; grid-template-columns:repeat(5,174px); }
-        .lower-grid { grid-template-columns:1fr; }
-        .now-row { align-items:flex-start; padding:15px; }
-        .now-copy h2 { font-size:20px; }
-        .progress-ring { width:94px; height:94px; padding:7px; }
-        .progress-ring strong { font-size:26px; }
-        .next-row { margin:0 15px; }
-        .status-strip { padding:10px 15px 15px; grid-template-columns:1fr; }
-        .status-tile { min-height:52px; }
+        .brand-copy p { display:none; }
+        .sync-box small { display:none; }
+        .sync-box > span { font-size:14px; }
+        .view-nav { width:100%; }
+        .view-tab { flex:1 0 auto; justify-content:center; min-height:44px; }
+        .today-layout { grid-template-columns:1fr; grid-template-areas:"hero" "day" "alerts"; }
+        .lesson-hero { padding:18px 15px; gap:12px; }
+        .lesson-primary h3 { font-size:23px; }
+        .progress-ring { width:98px; height:98px; padding:7px; }
+        .progress-ring strong { font-size:24px; }
+        .next-card { margin:0 14px 12px; align-items:flex-start; flex-direction:column; }
+        .next-card > span { text-align:left; }
+        .metric-grid { padding:0 14px 14px; grid-template-columns:1fr; }
+        .metric { min-height:53px; }
+        .schedule-toolbar { padding:14px; align-items:flex-start; flex-direction:column; }
+        .week-controls { width:100%; }
+        .week-current { flex:1; }
+        .attendance-summary { grid-template-columns:repeat(2,1fr); }
+        .summary-card { min-height:72px; padding:10px; }
+        .summary-card > span { width:32px; height:32px; }
+        .summary-card strong { font-size:19px; }
+        .attendance-row { grid-template-columns:28px 1fr; }
+        .attendance-row time { grid-column:2; text-align:left; margin-top:-8px; padding-bottom:7px; }
       }
-      @media(max-width:480px) {
-        .now-row { display:grid; grid-template-columns:1fr auto; gap:10px; }
-        .lesson-line { display:grid; gap:4px; }
-        .next-main { align-items:flex-start; flex-direction:column; }
-        .next-main span { text-align:left; }
+      @media (max-width:430px) {
+        .brand-block { gap:8px; }
+        .brand-logo { width:36px; height:36px; }
+        .top-actions { gap:7px; }
+        .icon-button { min-width:42px; min-height:42px; }
+        .student-chip { min-width:145px; }
+        .attendance-summary { grid-template-columns:1fr 1fr; }
       }
-    </style>
-    <div class="shell">
-      <header class="topbar">
-        <div class="brand">
-          <img src="/mojv-static/mojv-logo.svg" alt="mojV">
-          <div class="brand-copy"><h1>Szkoła</h1><div>mojV · plan, obecność i bieżące informacje</div></div>
-        </div>
-        <div class="top-actions">
-          <span class="sync-label">Ostatnia aktualizacja: ${this._data?.updated_at ? this._time(this._data.updated_at) : "—"}</span>
-          <button class="refresh" id="refresh" title="Odśwież" aria-label="Odśwież">↻</button>
-        </div>
-      </header>
-      ${this._studentTabs(students)}
-      ${body}
-    </div>`;
-    this._bindEvents();
+    `;
   }
 }
 
