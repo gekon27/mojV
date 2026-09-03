@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   quality:
-    name: Python quality
+    name: Code quality
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -21,6 +21,8 @@ jobs:
           python-version: "3.13"
       - name: Compile integration
         run: python -m compileall -q custom_components/mojv
+      - name: Validate School panel JavaScript
+        run: node --check custom_components/mojv/frontend/school-panel.js
       - name: Check reserved naming
         run: |
           python - <<'PY'
