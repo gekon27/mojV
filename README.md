@@ -20,6 +20,7 @@ Dla każdego dziecka integracja tworzy osobne urządzenie Home Assistant oraz:
 - `sensor` — plan dnia,
 - `sensor` — ostatnia synchronizacja,
 - `binary_sensor` — czy trwa lekcja,
+- `binary_sensor` — czy lekcja kończy się w ciągu 5 minut,
 - `calendar` — plan lekcji.
 
 Dodatkowo powstaje wspólny sensor liczby wykrytych uczniów.
@@ -46,7 +47,7 @@ W Home Assistant powinny powstać dwa urządzenia:
 - `Dziecko 1`,
 - `Dziecko 2`.
 
-Każde powinno mieć własny zestaw encji. Bezpośrednio po dodaniu integracji pierwsza lekcja jest ustawiana jako trwająca, a licznik minut do końca zmniejsza się wraz z czasem. Drugie dziecko ma lekko przesunięty plan, co pozwala sprawdzić niezależność danych.
+Każde powinno mieć własny zestaw encji. Bezpośrednio po dodaniu integracji pierwsza lekcja jest ustawiana jako trwająca, a licznik minut do końca zmniejsza się wraz z czasem. Stan `Lekcja kończy się` aktywuje się w ostatnich 5 minutach zajęć. Drugie dziecko ma lekko przesunięty plan, co pozwala sprawdzić niezależność danych.
 
 ## Diagnostyka
 
@@ -75,7 +76,7 @@ Do katalogu konfiguracji Home Assistant. Przy Twoim układzie będzie to:
 - `models.py` — model konta, ucznia i lekcji,
 - `logic.py` — czysta logika aktualnej/następnej lekcji,
 - `sensor.py` — sensory,
-- `binary_sensor.py` — stan „trwa lekcja”,
+- `binary_sensor.py` — stany „trwa lekcja” i „lekcja kończy się”,
 - `calendar.py` — kalendarze dzieci,
 - `config_flow.py` — konfiguracja przez GUI,
 - `diagnostics.py` — bezpieczna diagnostyka.
