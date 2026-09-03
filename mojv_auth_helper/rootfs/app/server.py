@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 import json
 import logging
+import os
 import shutil
+import time
 from typing import Any
 from urllib.parse import urlencode, urlparse
 
@@ -31,9 +33,10 @@ _LOGGER = logging.getLogger("mojv_auth_helper")
 _PORTAL_ROOT = "https://edu" + "vulcan.pl"
 _STUDENT_HOST = "uczen." + "edu" + "vulcan.pl"
 _LOGIN_URL = f"{_PORTAL_ROOT}/logowanie"
-_VERSION = "0.1.0"
+_VERSION = os.environ.get("MOJV_HELPER_VERSION", "dev")
 _BROWSER_TIMEOUT = 35
 _CACHE_MAX_AGE = timedelta(hours=6)
+_DIAGNOSTIC_SCREENSHOT = "/data/mojv_auth_error.png"
 
 _INVALID_AUTH_MARKERS = (
     "nieprawidłowe hasło",
@@ -88,7 +91,7 @@ def _browser_options() -> Options:
     binary = shutil.which("chromium-browser") or shutil.which("chromium")
     if binary:
         options.binary_location = binary
-    options.add_argument("--headless=new")
+    options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
@@ -109,6 +112,42 @@ def _new_driver() -> webdriver.Chrome:
         return driver
     except WebDriverException as err:
         raise BrowserAuthError(f"Cannot start Chromium: {err.msg}") from err
+
+
+def _safe_location(driver: webdriver.Chrome) -> str:
+    try:
+        parsed = urlparse(driver.current_url)
+    except WebDriverException:
+        return "unknown"
+    host = parsed.netloc or "unknown"
+    path = parsed.path or "/"
+    return f"{host}{path}"
+
+
+def _log_stage(driver: webdriver.Chrome, stage: str) -> None:
+    _LOGGER.info("Auth stage=%s location=%s", stage, _safe_location(driver))
+
+
+def _save_diagnostic_screenshot(driver: webdriver.Chrome) -> None:
+    try:
+        driver.execute_script(
+            """
+            for (const input of document.querySelectorAll('input')) {
+                input.value = '';
+                input.setAttribute('value', '');
+            }
+            """
+        )
+    except WebDriverException:
+        pass
+    try:
+        if driver.save_screenshot(_DIAGNOSTIC_SCREENSHOT):
+            _LOGGER.warning(
+                "Auth diagnostic screenshot saved locally: %s",
+                _DIAGNOSTIC_SCREENSHOT,
+            )
+    except WebDriverException:
+        pass
 
 
 def _page_lower(driver: webdriver.Chrome) -> str:
@@ -248,6 +287,8 @@ def _login_browser(username: str, password: str) -> BrowserAccount:
     driver = _new_driver()
     try:
         driver.get(_LOGIN_URL)
+        _log_stage(driver, "login-page")
+
         username_input = _wait_for_input(
             driver,
             (
@@ -264,6 +305,8 @@ def _login_browser(username: str, password: str) -> BrowserAccount:
         username_input.clear()
         username_input.send_keys(username)
         username_input.send_keys(Keys.ENTER)
+        time.sleep(1.5)
+        _log_stage(driver, "username-submitted")
 
         password_input = _wait_for_input(
             driver,
@@ -273,17 +316,21 @@ def _login_browser(username: str, password: str) -> BrowserAccount:
         password_input.clear()
         password_input.send_keys(password)
         password_input.send_keys(Keys.ENTER)
+        _log_stage(driver, "password-submitted")
 
         links = _wait_for_diary_links(driver)
+        _LOGGER.info("Auth stage=diary-links count=%d", len(links))
         targets: list[StudentTarget] = []
         seen: set[tuple[str, str, str]] = set()
 
         for link in links:
             driver.get(link)
             app_url = _wait_for_student_app(driver)
+            _log_stage(driver, "student-app")
             city = _city_from_app_url(app_url)
             context_url = f"https://{_STUDENT_HOST}/{city}/api/Context"
             context = _browser_json(driver, context_url)
+            _log_stage(driver, "context")
             for target in targets_from_context(city, app_url, context):
                 identity = (target.city, target.student_id, target.name)
                 if identity in seen:
@@ -300,6 +347,7 @@ def _login_browser(username: str, password: str) -> BrowserAccount:
             authenticated_at=datetime.now(),
         )
     except Exception:
+        _save_diagnostic_screenshot(driver)
         try:
             driver.quit()
         except Exception:
