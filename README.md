@@ -6,9 +6,9 @@ Integracja Home Assistant skoncentrowana na planie lekcji, bieżącej/następnej
 
 ## Status
 
-**HACS 0.6.2 — LIVE + panel Szkoła + poprawiony helper przeglądarkowy 0.1.4.**
+**HACS 0.6.3 — LIVE + panel Szkoła + poprawiony helper przeglądarkowy 0.1.4.**
 
-Wersja 0.6.2 zachowuje obsługę **1..N dzieci**, rzeczywisty plan lekcji i frekwencję oraz poprawia logowanie przez **mojV Auth Helper** na kontach zatrzymywanych przez weryfikację wymagającą pełnej przeglądarki.
+Wersja 0.6.3 zachowuje obsługę **1..N dzieci**, rzeczywisty plan lekcji i frekwencję oraz poprawia logowanie przez **mojV Auth Helper** na kontach zatrzymywanych przez weryfikację wymagającą pełnej przeglądarki.
 
 Helper 0.1.4 uruchamia Chromium w środowisku z wirtualnym ekranem Xvfb i klasycznym trybem headless. Po przekierowaniu SSO nie wymaga już konkretnej ścieżki `/App/...`: wystarcza poprawny host ucznia i tenant w pierwszym segmencie ścieżki. Nadal izoluje timeouty renderera dla poszczególnych linków dziennika oraz nie ujawnia sekretów w diagnostyce.
 
@@ -31,13 +31,13 @@ Zasady bezpieczeństwa helpera:
 - log diagnostyczny zapisuje tylko etapy logowania i bezpieczną lokalizację strony bez parametrów zapytania,
 - diagnostyczny screenshot jest lokalny i przed zapisem helper czyści wartości pól `input`.
 
-## Instalacja 0.6.2
+## Instalacja 0.6.3
 
 ### 1. Integracja HACS
 
 1. W HACS dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories, jeżeli repo nie jest jeszcze dodane.
 2. Wybierz `mojV` → **Download / Redownload / Update**.
-3. Zainstaluj wersję **0.6.2** lub nowszą.
+3. Zainstaluj wersję **0.6.3** lub nowszą.
 4. Uruchom ponownie Home Assistant.
 
 HACS instaluje integrację jako:
@@ -122,7 +122,7 @@ Zdarzenia można podpiąć do `notify.mobile_app_*`, głośnika, komunikatora al
 
 ## Aktualny zakres LIVE
 
-W 0.6.2 działającą podstawą LIVE pozostają:
+W 0.6.3 działającą podstawą LIVE pozostają:
 
 - automatyczne wykrywanie 1..N dzieci,
 - plan lekcji,
