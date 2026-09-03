@@ -21,6 +21,24 @@ jobs:
           python-version: "3.13"
       - name: Compile integration
         run: python -m compileall -q custom_components/mojv
+      - name: Check reserved naming
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          needle = bytes([101,100,117,86,85,76,67,65,78]).decode().lower()
+          hits = []
+          for path in Path('.').rglob('*'):
+              if not path.is_file() or '.git' in path.parts:
+                  continue
+              try:
+                  text = path.read_text(encoding='utf-8').lower()
+              except (UnicodeDecodeError, OSError):
+                  continue
+              if needle in text:
+                  hits.append(str(path))
+          if hits:
+              raise SystemExit('Reserved naming found in: ' + ', '.join(hits))
+          PY
       - name: Install test runner
         run: python -m pip install --disable-pip-version-check pytest
       - name: Run unit tests
