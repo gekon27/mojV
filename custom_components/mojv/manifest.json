@@ -1,0 +1,11 @@
+{
+  "domain": "mojv",
+  "name": "mojV",
+  "version": "0.1.0",
+  "documentation": "https://github.com/gekon27/mojV",
+  "issue_tracker": "https://github.com/gekon27/mojV/issues",
+  "codeowners": ["@gekon27"],
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "requirements": []
+}
