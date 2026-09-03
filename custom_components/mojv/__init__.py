@@ -3,9 +3,13 @@ from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .client import MojVClient
 from .const import (
+    AUTH_BACKEND_HELPER,
+    AUTH_BACKEND_HTTP,
+    CONF_AUTH_BACKEND,
     CONF_DEMO_STUDENTS,
     CONF_MODE,
     CONF_PASSWORD,
@@ -16,6 +20,7 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import MojVCoordinator
+from .helper_gateway import HelperGateway
 from .migration import migrate_entry_data
 from .notifications import MojVNotificationManager
 from .panel import async_register_school_panel, async_unregister_school_panel
@@ -34,11 +39,18 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up mojV from a config entry."""
     mode = entry.data.get(CONF_MODE, MODE_DEMO)
+    auth_backend = str(entry.data.get(CONF_AUTH_BACKEND, AUTH_BACKEND_HTTP))
+    helper_gateway = None
+    if mode != MODE_DEMO and auth_backend == AUTH_BACKEND_HELPER:
+        helper_gateway = HelperGateway(async_get_clientsession(hass))
+
     client = MojVClient(
         mode=mode,
         demo_students=int(entry.data.get(CONF_DEMO_STUDENTS, DEFAULT_DEMO_STUDENTS)),
         username=str(entry.data.get(CONF_USERNAME, "")),
         password=str(entry.data.get(CONF_PASSWORD, "")),
+        auth_backend=auth_backend,
+        helper_gateway=helper_gateway,
     )
     coordinator = MojVCoordinator(hass, client, live=mode != MODE_DEMO)
     await coordinator.async_config_entry_first_refresh()
