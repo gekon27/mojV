@@ -1,0 +1,15 @@
+name: mojV Auth Helper
+version: "0.1.0"
+slug: mojv_auth_helper
+description: Local Chromium authentication helper used only by the mojV integration.
+url: https://github.com/gekon27/mojV
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+init: false
+stage: experimental
+ingress: false
+options: {}
+schema: {}
