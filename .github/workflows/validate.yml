@@ -102,22 +102,35 @@ jobs:
             mojv_auth_helper
       - name: Start helper image
         run: docker run -d --name mojv-auth-helper-test -p 18099:8099 mojv-auth-helper:test
-      - name: Smoke-test Chromium
+      - name: Smoke-test Xvfb and Chromium
         run: |
           docker exec mojv-auth-helper-test sh -c '
             set -e
+            ps | grep "[X]vfb"
+            test -n "$DISPLAY"
             BROWSER="$(command -v chromium-browser || command -v chromium)"
             test -n "$BROWSER"
             command -v chromedriver
-            "$BROWSER" --headless=new --no-sandbox --disable-gpu --dump-dom about:blank >/tmp/browser-smoke.html
+            "$BROWSER" --headless --no-sandbox --disable-gpu --dump-dom about:blank >/tmp/browser-smoke.html
             test -s /tmp/browser-smoke.html
           '
-      - name: Smoke-test helper health
+      - name: Smoke-test helper health and version
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -e
           for attempt in $(seq 1 30); do
             if curl --fail --silent --show-error http://127.0.0.1:18099/health > /tmp/helper-health.json; then
               cat /tmp/helper-health.json
+              python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = json.loads(Path('/tmp/helper-health.json').read_text(encoding='utf-8'))
+          assert payload['status'] == 'ok'
+          assert payload['version'] == os.environ['EXPECTED_VERSION']
+          PY
               exit 0
             fi
             sleep 1
