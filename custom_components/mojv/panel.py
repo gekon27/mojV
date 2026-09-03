@@ -15,6 +15,7 @@ from .const import DOMAIN
 from .coordinator import MojVCoordinator
 from .logic import (
     active_lesson,
+    attendance_summary,
     lesson_alerts,
     lesson_progress_pct,
     lessons_today,
@@ -102,6 +103,7 @@ def _student_dict(snapshot, now) -> dict[str, Any]:
             for lesson in lessons_today(snapshot, now)
         ],
         "week": _week_dict(snapshot, now),
+        "attendance_summary": attendance_summary(snapshot),
         "grades": [
             {
                 "id": grade.grade_id,
