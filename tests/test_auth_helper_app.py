@@ -69,18 +69,30 @@ def test_snapshot_student_never_contains_browser_or_session_secrets() -> None:
         session_key="SECRET",
         journal_id="99",
     )
-    row = runtime.public_snapshot_row(target, timetable=[], attendance=[], errors={})
+    row = runtime.public_snapshot_row(
+        target,
+        timetable=[],
+        attendance=[],
+        classification_periods=[{"id": 1, "numerOkresu": 1}],
+        grades_by_period={"1": {"ocenyPrzedmioty": []}},
+        schoolwork=[{"id": 7, "typ": 4}],
+        errors={},
+    )
     assert set(row) == {
         "student_id",
         "name",
         "class_name",
         "timetable",
         "attendance",
+        "classification_periods",
+        "grades_by_period",
+        "schoolwork",
         "errors",
     }
     public = str(row)
     assert "SECRET" not in public
-    assert "99" not in public
+    assert "'journal_id'" not in public
+    assert "'session_key'" not in public
 
 
 def test_browser_cache_key_is_bound_to_both_username_and_password() -> None:
@@ -140,3 +152,12 @@ def test_diary_link_renderer_timeout_is_recovered_per_link() -> None:
     assert "window.stop()" in server
     assert "for index, link in enumerate(links, start=1)" in server
     assert "link_failures" in server
+
+
+def test_helper_snapshot_fetches_extended_live_modules() -> None:
+    server = SERVER.read_text(encoding="utf-8")
+
+    assert "zakresDanych" in server
+    assert "SprawdzianyZadaniaDomowe" in server
+    assert "OkresyKlasyfikacyjne" in server
+    assert "Oceny" in server
