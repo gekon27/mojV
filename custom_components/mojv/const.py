@@ -10,6 +10,8 @@ PLATFORMS = (Platform.SENSOR, Platform.BINARY_SENSOR, Platform.CALENDAR)
 
 CONF_MODE = "mode"
 CONF_DEMO_STUDENTS = "demo_students"
+CONF_USERNAME = "username"
+CONF_PASSWORD = "password"
 
 MODE_DEMO = "demo"
 MODE_LIVE = "live"
@@ -18,7 +20,8 @@ DEFAULT_DEMO_STUDENTS = 2
 MIN_DEMO_STUDENTS = 1
 MAX_DEMO_STUDENTS = 8
 
-UPDATE_INTERVAL = timedelta(seconds=30)
+DEMO_UPDATE_INTERVAL = timedelta(seconds=30)
+LIVE_UPDATE_INTERVAL = timedelta(minutes=30)
 
 ATTENDANCE_PRESENT = "present"
 ATTENDANCE_ABSENT = "absent"
