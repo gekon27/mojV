@@ -9,10 +9,10 @@ Przebudować panel **Szkoła** w mojV tak, aby był szybszy, czytelniejszy i bar
 - Jeden inicjalizowany raz DOM zamiast pełnego `shadowRoot.innerHTML` przy każdym odświeżeniu.
 - Cache ostatniego payloadu i selektywne aktualizacje widoków.
 - Lokalne odświeżanie zegara/progressu lekcji co 10 s bez zdalnego pobierania danych.
-- Zdalne pobieranie panelu tylko przy pierwszym wejściu, ręcznym odświeżeniu oraz po zmianie danych koordynatora.
+- Zdalne pobieranie panelu tylko przy pierwszym wejściu i ręcznym odświeżeniu; dane zewnętrzne nadal odświeża coordinator Home Assistant.
 - Widoki: **Dzisiaj**, **Plan**, **Frekwencja**. Dodatkowe zakładki pojawiają się tylko wtedy, gdy backend zwraca odpowiadające im realne dane.
-- Plan tygodniowy z nawigacją poprzedni / bieżący / następny tydzień.
-- W planie: godziny, numer lekcji, przedmiot, sala, nauczyciel, obecność, zastępstwo, przeniesienie i odwołanie.
+- Plan tygodniowy z lokalną nawigacją poprzedni / bieżący / następny tydzień.
+- W planie: godziny, numer lekcji, przedmiot, sala, nauczyciel, obecność, zastępstwo i odwołanie.
 - Linia aktualnego czasu w bieżącym tygodniu.
 - Responsywny układ desktop / tablet / telefon.
 - Styl oparty o zmienne motywu Home Assistant z własnym akcentem mojV; mniej ciężkich gradientów i cieni.
@@ -42,9 +42,9 @@ Renderowanie ma być idempotentne. Jeżeli payload nie zmienił się, panel nie 
 
 ## Przepływ danych
 
-Home Assistant coordinator pozostaje jedynym miejscem okresowego pobierania danych zewnętrznych. WebSocket `mojv/panel` zwraca gotowy model do prezentacji. Frontend nie odpytuje portalu szkolnego i nie powoduje dodatkowego logowania.
+Home Assistant coordinator pozostaje jedynym miejscem okresowego pobierania danych zewnętrznych. WebSocket `mojv/panel` zwraca gotowy model do prezentacji obejmujący zakres planu znajdujący się już w snapshotcie. Frontend nie odpytuje portalu szkolnego i nie powoduje dodatkowego logowania.
 
-WebSocket ma otrzymać argument `week_offset` (`-1`, `0`, `1`) i zwracać tydzień wskazany przez UI. Dla danych już znajdujących się w snapshotcie zmiana tygodnia nie może uruchamiać nowego logowania.
+Zmiana tygodnia (`-1`, `0`, `1`) odbywa się całkowicie lokalnie w przeglądarce przez filtrowanie `student.week`. Nie wykonuje requestu WebSocket ani nie uruchamia odświeżenia koordynatora.
 
 ## Wydajność
 
@@ -64,7 +64,7 @@ Najważniejszy ekran. Pokazuje aktualną lekcję, następną lekcję, czas do ko
 
 ### Plan
 
-Tabela 5 dni × sloty godzinowe. Bieżący dzień i lekcja są wyróżnione. Linia czasu pokazuje pozycję w planie. Nawigacja tygodnia jest dostępna bez przeładowania całej strony.
+Tabela 5 dni × sloty godzinowe. Bieżący dzień i lekcja są wyróżnione. Linia czasu pokazuje pozycję w planie. Nawigacja tygodnia jest dostępna bez przeładowania całej strony i bez requestu do Home Assistant.
 
 ### Frekwencja
 
@@ -90,7 +90,7 @@ Repo referencyjne jest GPL-3.0. Nie kopiujemy jego plików JS/CSS ani fragmentó
 - Panel działa w LIVE i DEMO.
 - Przełączanie dziecka nie wykonuje nowego requestu WebSocket, jeśli dane są już w pamięci.
 - Ticker 10 s nie wykonuje requestu WebSocket.
-- Plan pozwala zmienić tydzień w zakresie `-1..1`.
+- Plan pozwala zmienić tydzień w zakresie `-1..1` lokalnie.
 - Aktualna lekcja i bieżący dzień są jednoznacznie widoczne.
 - Mobile nie wymaga przewijania całego dashboardu w poziomie; poziome przewijanie jest dopuszczalne wyłącznie wewnątrz tabeli planu.
 - `node --check` przechodzi.
