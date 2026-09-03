@@ -6,6 +6,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = ROOT / "mojv_auth_helper" / "rootfs" / "app" / "auth_runtime.py"
+SERVER = ROOT / "mojv_auth_helper" / "rootfs" / "app" / "server.py"
+DOCKERFILE = ROOT / "mojv_auth_helper" / "Dockerfile"
+RUN_SCRIPT = ROOT / "mojv_auth_helper" / "rootfs" / "etc" / "services.d" / "mojv-auth" / "run"
 
 
 def _load():
@@ -84,3 +87,22 @@ def test_browser_cache_key_is_bound_to_both_username_and_password() -> None:
     assert first != wrong_password
     assert "Parent" not in first
     assert "secret-one" not in first
+
+
+def test_browser_runs_on_virtual_display_instead_of_headless_mode() -> None:
+    server = SERVER.read_text(encoding="utf-8")
+    dockerfile = DOCKERFILE.read_text(encoding="utf-8").lower()
+    run_script = RUN_SCRIPT.read_text(encoding="utf-8")
+
+    assert '--headless' not in server
+    assert 'xvfb' in dockerfile
+    assert 'Xvfb' in run_script
+    assert 'DISPLAY=' in run_script
+
+
+def test_helper_health_version_comes_from_image_build_version() -> None:
+    server = SERVER.read_text(encoding="utf-8")
+    dockerfile = DOCKERFILE.read_text(encoding="utf-8")
+
+    assert 'MOJV_HELPER_VERSION' in server
+    assert 'MOJV_HELPER_VERSION' in dockerfile
