@@ -3,8 +3,10 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from homeassistant.const import Platform
+
 DOMAIN = "mojv"
-PLATFORMS = ("sensor", "binary_sensor", "calendar")
+PLATFORMS = (Platform.SENSOR, Platform.BINARY_SENSOR, Platform.CALENDAR)
 
 CONF_MODE = "mode"
 CONF_DEMO_STUDENTS = "demo_students"
