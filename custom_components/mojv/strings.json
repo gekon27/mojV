@@ -1,0 +1,17 @@
+{
+  "title": "mojV",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Test mojV",
+        "description": "Tryb testowy tworzy pełny zestaw danych szkolnych bez logowania do portalu. Ustaw liczbę dzieci.",
+        "data": {
+          "demo_students": "Liczba dzieci"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Tryb testowy mojV jest już skonfigurowany."
+    }
+  }
+}
