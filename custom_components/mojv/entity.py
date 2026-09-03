@@ -32,5 +32,5 @@ class MojVStudentEntity(CoordinatorEntity[MojVCoordinator]):
             identifiers={(DOMAIN, student.student_id)},
             name=student.name,
             manufacturer="mojV",
-            model=f"eduVULCAN student {student.class_name}".strip(),
+            model=f"Uczeń {student.class_name}".strip(),
         )
