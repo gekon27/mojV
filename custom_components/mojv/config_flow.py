@@ -89,7 +89,11 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return self.async_show_form(step_id="demo", data_schema=schema)
 
-    async def _async_helper_login(self, username: str, password: str):
+    async def _async_helper_login(
+        self,
+        username: str,
+        password: str,
+    ) -> tuple[dict, ...]:
         """Validate an account through the local browser helper."""
         gateway = HelperGateway(async_get_clientsession(self.hass))
         await gateway.async_health()
@@ -103,48 +107,40 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             username = str(user_input[CONF_USERNAME]).strip()
             password = str(user_input[CONF_PASSWORD])
             backend = AUTH_BACKEND_HTTP
+            students = None
             session = create_session()
             try:
-                students = await async_login(session, username, password)
+                try:
+                    students = await async_login(session, username, password)
+                except MojVBrowserVerificationRequired:
+                    backend = AUTH_BACKEND_HELPER
+                    if not session.closed:
+                        await session.close()
+                    students = await self._async_helper_login(username, password)
             except MojVInvalidAuth:
                 errors["base"] = "invalid_auth"
-            except MojVBrowserVerificationRequired:
-                backend = AUTH_BACKEND_HELPER
-                if not session.closed:
-                    await session.close()
-                try:
-                    students = await self._async_helper_login(username, password)
-                except HelperInvalidAuth:
-                    errors["base"] = "invalid_auth"
-                except HelperUnavailable:
-                    errors["base"] = "helper_required"
-                except HelperRequestError:
-                    _LOGGER.exception("Local browser helper rejected the account request")
-                    errors["base"] = "helper_failed"
             except MojVNoStudents:
                 errors["base"] = "no_students"
             except MojVCannotConnect:
                 errors["base"] = "cannot_connect"
+            except HelperInvalidAuth:
+                errors["base"] = "invalid_auth"
+            except HelperUnavailable:
+                errors["base"] = "helper_required"
+            except HelperRequestError as err:
+                if str(err) == "no_students":
+                    errors["base"] = "no_students"
+                else:
+                    _LOGGER.warning("Local browser helper login failed: %s", err)
+                    errors["base"] = "helper_failed"
             except Exception:
                 _LOGGER.exception("Unexpected live-login error")
                 errors["base"] = "unknown"
-            else:
-                await self.async_set_unique_id(f"mojv_live:{username.lower()}")
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(
-                    title=f"mojV — {len(students)} dzieci",
-                    data={
-                        CONF_MODE: MODE_LIVE,
-                        CONF_USERNAME: username,
-                        CONF_PASSWORD: password,
-                        CONF_AUTH_BACKEND: backend,
-                    },
-                )
             finally:
                 if not session.closed:
                     await session.close()
 
-            if user_input is not None and "base" not in errors and "students" in locals():
+            if students is not None and not errors:
                 await self.async_set_unique_id(f"mojv_live:{username.lower()}")
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
