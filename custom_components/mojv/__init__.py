@@ -1,6 +1,10 @@
 """mojV Home Assistant integration."""
 from __future__ import annotations
 
+import json
+import logging
+from pathlib import Path
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -25,6 +29,12 @@ from .migration import migrate_entry_data
 from .notifications import MojVNotificationManager
 from .panel import async_register_school_panel, async_unregister_school_panel
 
+_LOGGER = logging.getLogger(__name__)
+_MANIFEST_PATH = Path(__file__).with_name("manifest.json")
+_INTEGRATION_VERSION = str(
+    json.loads(_MANIFEST_PATH.read_text(encoding="utf-8")).get("version", "unknown")
+)
+
 DATA_NOTIFIERS = f"{DOMAIN}_notifiers"
 
 
@@ -40,6 +50,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up mojV from a config entry."""
     mode = entry.data.get(CONF_MODE, MODE_DEMO)
     auth_backend = str(entry.data.get(CONF_AUTH_BACKEND, AUTH_BACKEND_HTTP))
+    _LOGGER.info(
+        "mojV integration version=%s mode=%s auth_backend=%s",
+        _INTEGRATION_VERSION,
+        mode,
+        auth_backend,
+    )
+
     helper_gateway = None
     if mode != MODE_DEMO and auth_backend == AUTH_BACKEND_HELPER:
         helper_gateway = HelperGateway(async_get_clientsession(hass))
