@@ -48,8 +48,16 @@ class HelperGateway:
         supervisor_host: str | None = None,
     ) -> None:
         self._session = session
-        self._supervisor_token = supervisor_token if supervisor_token is not None else os.getenv("SUPERVISOR_TOKEN", "")
-        host = supervisor_host if supervisor_host is not None else os.getenv("SUPERVISOR", "supervisor")
+        self._supervisor_token = (
+            supervisor_token
+            if supervisor_token is not None
+            else os.getenv("SUPERVISOR_TOKEN", "")
+        )
+        host = (
+            supervisor_host
+            if supervisor_host is not None
+            else os.getenv("SUPERVISOR", "supervisor")
+        )
         if host.startswith("http://") or host.startswith("https://"):
             self._supervisor_url = host.rstrip("/")
         else:
@@ -122,12 +130,23 @@ class HelperGateway:
                 kwargs["json"] = payload
             async with requester(url, **kwargs) as response:
                 body = await response.json(content_type=None)
+                error_code = (
+                    str(body.get("error") or "") if isinstance(body, dict) else ""
+                )
                 if response.status == 401:
                     raise HelperInvalidAuth("Invalid credentials")
+                if error_code in {
+                    "browser_verification_failed",
+                    "browser_error",
+                    "no_students",
+                }:
+                    raise HelperRequestError(error_code)
                 if response.status in {404, 503}:
                     raise HelperUnavailable(str(body))
                 if response.status >= 400:
-                    raise HelperRequestError(f"Helper returned HTTP {response.status}")
+                    raise HelperRequestError(
+                        error_code or f"Helper returned HTTP {response.status}"
+                    )
                 return body
         except HelperError:
             raise
