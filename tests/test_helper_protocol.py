@@ -49,7 +49,25 @@ def test_helper_snapshot_rejects_secret_fields() -> None:
                 "class_name": "5A",
                 "timetable": [],
                 "attendance": [],
-                "cookies": {"secret": "x"},
+                "journal_id": "99",
+                "grades_by_period": {"1": {"token": "nested-secret"}},
+            }
+        ]
+    }
+    assert helper.validate_snapshot(payload) is False
+
+
+def test_helper_snapshot_rejects_nested_secret_fields() -> None:
+    helper = _load()
+    payload = {
+        "students": [
+            {
+                "student_id": "1",
+                "name": "Jan Kowalski",
+                "class_name": "5A",
+                "timetable": [],
+                "attendance": [],
+                "grades_by_period": {"1": {"cookies": {"secret": "x"}}},
             }
         ]
     }
@@ -66,6 +84,9 @@ def test_helper_snapshot_accepts_public_school_payload() -> None:
                 "class_name": "5A",
                 "timetable": [{"przedmiot": "Matematyka"}],
                 "attendance": [],
+                "classification_periods": [{"id": 1, "numerOkresu": 1}],
+                "grades_by_period": {"1": {"ocenyPrzedmioty": []}},
+                "schoolwork": [{"id": 7, "typ": 4}],
                 "errors": {},
             }
         ]
