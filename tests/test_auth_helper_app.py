@@ -72,3 +72,15 @@ def test_snapshot_student_never_contains_browser_or_session_secrets() -> None:
         "errors",
     }
     assert "SECRET" not in str(row)
+
+
+def test_browser_cache_key_is_bound_to_both_username_and_password() -> None:
+    runtime = _load()
+    first = runtime.credential_cache_key("Parent", "secret-one")
+    same = runtime.credential_cache_key(" parent ", "secret-one")
+    wrong_password = runtime.credential_cache_key("Parent", "secret-two")
+
+    assert first == same
+    assert first != wrong_password
+    assert "Parent" not in first
+    assert "secret-one" not in first
