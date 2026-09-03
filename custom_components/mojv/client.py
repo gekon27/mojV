@@ -1,7 +1,7 @@
 """Data client for mojV.
 
 The first HACS test build intentionally contains a deterministic demo backend.
-The live eduVULCAN transport will replace only this boundary, while entities,
+The live school-portal transport will replace only this boundary, while entities,
 multi-student handling and Home Assistant plumbing stay unchanged.
 """
 from __future__ import annotations
@@ -34,7 +34,7 @@ class MojVClient:
         """Fetch data for all students."""
         if self._mode != MODE_DEMO:
             raise MojVLiveAuthPending(
-                "Live eduVULCAN authentication is not enabled in this test build"
+                "Live school-portal authentication is not enabled in this test build"
             )
         return self._build_demo_snapshot()
 
