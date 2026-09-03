@@ -222,7 +222,10 @@ def _wait_for_diary_links(driver: webdriver.Chrome) -> list[str]:
         raise NoStudents("No diary links were found after login") from err
 
 
-def _wait_for_student_app(driver: webdriver.Chrome) -> str:
+def _wait_for_student_app(
+    driver: webdriver.Chrome,
+    timeout: int = _BROWSER_TIMEOUT,
+) -> str:
     def ready(current: webdriver.Chrome):
         parsed = urlparse(current.current_url)
         if parsed.netloc.lower() == _STUDENT_HOST and "/app/" in parsed.path.lower():
@@ -230,7 +233,7 @@ def _wait_for_student_app(driver: webdriver.Chrome) -> str:
         return False
 
     try:
-        return str(WebDriverWait(driver, _BROWSER_TIMEOUT).until(ready))
+        return str(WebDriverWait(driver, timeout).until(ready))
     except TimeoutException as err:
         lower = _page_lower(driver)
         if any(marker in lower for marker in _CHALLENGE_MARKERS):
@@ -238,6 +241,38 @@ def _wait_for_student_app(driver: webdriver.Chrome) -> str:
                 "Journal browser verification did not complete"
             ) from err
         raise BrowserAuthError("Journal application did not open") from err
+
+
+def _open_diary_link(
+    driver: webdriver.Chrome,
+    link: str,
+    *,
+    index: int,
+    total: int,
+) -> str:
+    """Open one student-app link and recover when Chrome waits forever for load."""
+    load_timed_out = False
+    try:
+        driver.get(link)
+    except TimeoutException:
+        load_timed_out = True
+        _LOGGER.warning(
+            "Auth stage=diary-link-load-timeout index=%d/%d location=%s",
+            index,
+            total,
+            _safe_location(driver),
+        )
+        try:
+            driver.execute_script("window.stop()")
+        except WebDriverException:
+            pass
+    except WebDriverException as err:
+        raise BrowserAuthError("Journal link navigation failed") from err
+
+    return _wait_for_student_app(
+        driver,
+        timeout=5 if load_timed_out else _BROWSER_TIMEOUT,
+    )
 
 
 def _city_from_app_url(app_url: str) -> str:
@@ -322,36 +357,74 @@ def _login_browser(username: str, password: str) -> BrowserAccount:
         _LOGGER.info("Auth stage=diary-links count=%d", len(links))
         targets: list[StudentTarget] = []
         seen: set[tuple[str, str, str]] = set()
+        link_failures: list[BrowserAuthError] = []
 
-        for link in links:
-            driver.get(link)
-            app_url = _wait_for_student_app(driver)
-            _log_stage(driver, "student-app")
-            city = _city_from_app_url(app_url)
-            context_url = f"https://{_STUDENT_HOST}/{city}/api/Context"
-            context = _browser_json(driver, context_url)
-            _log_stage(driver, "context")
-            for target in targets_from_context(city, app_url, context):
-                identity = (target.city, target.student_id, target.name)
-                if identity in seen:
-                    continue
-                seen.add(identity)
-                targets.append(target)
+        for index, link in enumerate(links, start=1):
+            try:
+                app_url = _open_diary_link(
+                    driver,
+                    link,
+                    index=index,
+                    total=len(links),
+                )
+                _log_stage(driver, "student-app")
+                city = _city_from_app_url(app_url)
+                context_url = f"https://{_STUDENT_HOST}/{city}/api/Context"
+                context = _browser_json(driver, context_url)
+                discovered = targets_from_context(city, app_url, context)
+                _LOGGER.info(
+                    "Auth stage=context index=%d/%d students=%d",
+                    index,
+                    len(links),
+                    len(discovered),
+                )
+                for target in discovered:
+                    identity = (target.city, target.student_id, target.name)
+                    if identity in seen:
+                        continue
+                    seen.add(identity)
+                    targets.append(target)
+            except BrowserAuthError as err:
+                link_failures.append(err)
+                _LOGGER.warning(
+                    "Auth stage=diary-link-failed index=%d/%d reason=%s",
+                    index,
+                    len(links),
+                    type(err).__name__,
+                )
+                continue
 
         if not targets:
+            verification_error = next(
+                (
+                    err
+                    for err in link_failures
+                    if isinstance(err, BrowserVerificationFailed)
+                ),
+                None,
+            )
+            if verification_error is not None:
+                raise verification_error
+            if link_failures:
+                raise BrowserAuthError("All diary links failed") from link_failures[-1]
             raise NoStudents("Authenticated session contains no usable students")
+
         _LOGGER.info("Browser session ready: students=%d", len(targets))
         return BrowserAccount(
             driver=driver,
             targets=tuple(targets),
             authenticated_at=datetime.now(),
         )
-    except Exception:
+    except Exception as err:
         _save_diagnostic_screenshot(driver)
         try:
             driver.quit()
         except Exception:
             pass
+        if isinstance(err, BrowserAuthError):
+            raise
+        if isinstance(err, WebDriverException):
+            raise BrowserAuthError("Browser navigation failed") from err
         raise
 
 
@@ -379,8 +452,12 @@ def _snapshot_browser(account: BrowserAccount) -> dict[str, Any]:
         attendance: Any = None
         try:
             if account.driver.current_url != target.app_url:
-                account.driver.get(target.app_url)
-                _wait_for_student_app(account.driver)
+                _open_diary_link(
+                    account.driver,
+                    target.app_url,
+                    index=1,
+                    total=1,
+                )
             plan_params = urlencode(
                 {
                     "key": target.session_key,
