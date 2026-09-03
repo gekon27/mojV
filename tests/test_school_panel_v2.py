@@ -28,3 +28,23 @@ def test_switching_student_and_view_is_local_state() -> None:
     assert "data-view" in source
     assert "this._activeStudentId" in source
     assert "this._activeView" in source
+
+
+def test_schedule_navigation_and_time_line_are_local() -> None:
+    source = _source()
+    assert "_changeWeek(delta)" in source
+    assert "this._weekOffset" in source
+    assert "requestAnimationFrame" in source
+    assert "_positionTimeLine()" in source
+
+
+def test_schedule_groups_equal_clock_slots_across_different_dates() -> None:
+    source = _source()
+    assert "_slotKey(lesson)" in source
+    assert "lessonKey === slot.key" in source
+
+
+def test_attendance_view_uses_backend_summary() -> None:
+    source = _source()
+    assert "student.attendance_summary" in source
+    assert "_renderAttendance(student)" in source
