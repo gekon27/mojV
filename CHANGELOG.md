@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.7.0] - 2026-09-03
+
+- przebudowany panel **Szkoła** do architektury aplikacyjnej z DOM tworzonym jeden raz zamiast pełnego rerenderu przy każdym odświeżeniu,
+- lokalny zegar i postęp lekcji aktualizują się co 10 s bez zapytań WebSocket i bez dodatkowego logowania,
+- dodane osobne widoki **Dzisiaj**, **Plan** i **Frekwencja** oraz dynamiczne zakładki **Oceny** i **Uwagi** tylko wtedy, gdy istnieją rzeczywiste dane,
+- przełączanie dziecka i widoku odbywa się całkowicie lokalnie na już pobranym payloadzie,
+- plan obsługuje lokalną nawigację poprzedni / bieżący / następny tydzień bez pobierania danych z portalu,
+- plan tygodniowy grupuje lekcje po rzeczywistych slotach godzinowych niezależnie od daty, dzięki czemu te same godziny od poniedziałku do piątku zajmują wspólny wiersz,
+- dodana linia aktualnego czasu, wyróżnienie trwającej lekcji, anulowania i zastępstwa,
+- dodany backendowy agregat frekwencji pomijający odwołane lekcje i rozdzielający wszystkie obsługiwane stany,
+- przebudowany responsywny wygląd z wykorzystaniem zmiennych motywu Home Assistant; poziome przewijanie na telefonie jest ograniczone do tabeli planu,
+- nie dodano nowych zależności frontendowych ani kodu skopiowanego z repo referencyjnego,
+- dodane testy regresyjne architektury renderowania, lokalnego tickera, lokalnej nawigacji tygodnia, grupowania slotów i agregacji frekwencji,
+- README, manifest i changelog zsynchronizowane do `0.7.0`.
+
 ## [0.6.4] - 2026-09-03
 
 - integracja zapisuje przy starcie numer wersji z własnego `manifest.json`,
