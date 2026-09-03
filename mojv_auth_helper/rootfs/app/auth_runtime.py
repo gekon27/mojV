@@ -16,6 +16,7 @@ class StudentTarget:
     city: str
     app_url: str
     session_key: str
+    journal_id: str = ""
 
     def public_dict(self) -> dict[str, str]:
         """Return the secret-free student descriptor consumed by Home Assistant."""
@@ -74,6 +75,7 @@ def targets_from_context(
         if not key or not name:
             continue
         class_name = str(row.get("oddzial") or row.get("klasa") or "").strip()
+        journal_id = str(row.get("idDziennik") or "").strip()
         raw_id = (
             row.get("idUczen")
             or row.get("idUcznia")
@@ -93,6 +95,7 @@ def targets_from_context(
                 city=city,
                 app_url=app_url,
                 session_key=key,
+                journal_id=journal_id,
             )
         )
     return tuple(targets)
