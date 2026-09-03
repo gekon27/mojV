@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.1] - 2026-09-04
+
+- zakończone atomowe rozdzielenie HACS i browser-auth: `mojV` jest ponownie czystym repozytorium integracji Home Assistant,
+- `mojV Auth Helper` został przeniesiony do osobnego repozytorium `https://github.com/gekon27/mojv-auth-helper`,
+- helper podniesiony do `0.1.7`; zachowano ten sam kontrakt runtime i automatyczny fallback po lekkim HTTP,
+- osobne repo helpera ma własne metadata App Store, README/DOCS/CHANGELOG, testy, CI oraz publikowanie GHCR,
+- potwierdzono build i uruchomienie obrazu `amd64`, `/health`, Xvfb, Chromium i ChromeDriver,
+- potwierdzono build `aarch64`, publikację manifestu multi-arch i anonimowy pull `ghcr.io/gekon27/mojv-auth-helper:0.1.7`,
+- z repo HACS usunięto `repository.yaml`, katalog `mojv_auth_helper/`, workflow publikowania helpera i testy zależne od plików aplikacji,
+- zachowano `helper_gateway.py` i `helper_protocol.py`, ponieważ są częścią lekkiej integracji i obsługują automatyczny fallback,
+- CI HACS nie buduje już Chromium; sprawdza wyłącznie Core, panel, testy, Hassfest i HACS,
+- README zaktualizowany do instalacji helpera z osobnego repozytorium,
+- README, manifest i changelog zsynchronizowane do `0.8.1`.
+
 ## [0.8.0] - 2026-09-03
 
 - dodane rzeczywiste dane LIVE ocen cząstkowych oraz ocen proponowanych i okresowych/końcowych,
