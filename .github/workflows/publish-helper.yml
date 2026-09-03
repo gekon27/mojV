@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - fix/prebuilt-helper-0.6.1
     paths:
       - mojv_auth_helper/**
       - .github/workflows/publish-helper.yml
