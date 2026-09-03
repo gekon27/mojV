@@ -6,11 +6,11 @@ Integracja Home Assistant skoncentrowana na planie lekcji, bieżącej/następnej
 
 ## Status
 
-**HACS 0.6.4 — LIVE + panel Szkoła + helper przeglądarkowy 0.1.5.**
+**HACS 0.7.0 — LIVE + szybki panel Szkoła v2 + helper przeglądarkowy 0.1.5.**
 
-Wersja 0.6.4 zachowuje obsługę **1..N dzieci**, rzeczywisty plan lekcji i frekwencję oraz dodaje jednoznaczne logowanie wersji integracji i helpera przy ich starcie.
+Wersja 0.7.0 zachowuje obsługę **1..N dzieci**, rzeczywisty plan lekcji i frekwencję, a panel **Szkoła** przebudowuje do szybszej architektury aplikacyjnej. Główny DOM jest tworzony raz, zegar i postęp lekcji aktualizują się lokalnie co 10 sekund, a zmiana dziecka, widoku lub tygodnia nie powoduje dodatkowego logowania ani pobierania danych z portalu szkolnego.
 
-Helper 0.1.5 uruchamia Chromium w środowisku z wirtualnym ekranem Xvfb i klasycznym trybem headless. Po przekierowaniu SSO nie wymaga konkretnej ścieżki `/App/...`: wystarcza poprawny host ucznia i tenant w pierwszym segmencie ścieżki. Nadal izoluje timeouty renderera dla poszczególnych linków dziennika oraz nie ujawnia sekretów w diagnostyce.
+Helper 0.1.5 uruchamia Chromium w środowisku z wirtualnym ekranem Xvfb i klasycznym trybem headless. Po przekierowaniu SSO nie wymaga konkretnej końcowej ścieżki aplikacji: wystarcza poprawny host ucznia i tenant w pierwszym segmencie ścieżki. Nadal izoluje timeouty renderera dla poszczególnych linków dziennika oraz nie ujawnia sekretów w diagnostyce.
 
 mojV zawsze najpierw próbuje lekkiego logowania bez dodatkowego kontenera. Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie przełącza się na lokalną aplikację **mojV Auth Helper** z Chromium. Użytkownik nie wybiera backendu logowania ręcznie.
 
@@ -31,13 +31,13 @@ Zasady bezpieczeństwa helpera:
 - log diagnostyczny zapisuje tylko etapy logowania i bezpieczną lokalizację strony bez parametrów zapytania,
 - diagnostyczny screenshot jest lokalny i przed zapisem helper czyści wartości pól `input`.
 
-## Instalacja 0.6.4
+## Instalacja 0.7.0
 
 ### 1. Integracja HACS
 
 1. W HACS dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories, jeżeli repo nie jest jeszcze dodane.
 2. Wybierz `mojV` → **Download / Redownload / Update**.
-3. Zainstaluj wersję **0.6.4** lub nowszą.
+3. Zainstaluj wersję **0.7.0** lub nowszą.
 4. Uruchom ponownie Home Assistant.
 
 HACS instaluje integrację jako:
@@ -72,23 +72,30 @@ Po sukcesie wpis integracji będzie nazwany np. `mojV — 2 dzieci`, a każde dz
 
 Tryb **Demo** pozostaje dostępny jako niezależny test lokalny.
 
-## Panel „Szkoła”
+## Panel „Szkoła” v2
 
 Po załadowaniu integracji mojV automatycznie rejestruje pozycję **Szkoła** w lewym menu Home Assistant.
 
-Panel zawiera:
+W 0.7.0 panel działa jak lekka aplikacja zamiast przebudowywać cały interfejs przy każdym ticku. Zawiera:
 
-- zakładki do przełączania pomiędzy wykrytymi dziećmi,
-- pełny plan lekcji poniedziałek–piątek,
-- wyróżnienie dzisiejszego dnia i aktualnej lekcji,
+- szybkie lokalne przełączanie wszystkich wykrytych dzieci,
+- osobne widoki **Dzisiaj**, **Plan** i **Frekwencja**,
+- dynamiczne zakładki **Oceny** i **Uwagi** tylko wtedy, gdy backend faktycznie zwraca te dane,
 - aktualną i następną lekcję,
 - numer lekcji, salę i nauczyciela,
-- pierścień postępu lekcji oraz czas do końca,
-- stan frekwencji przy każdej lekcji,
-- alerty o nieobecności, spóźnieniu i zbliżającym się końcu lekcji,
-- sekcje ocen, uwag i powiadomień,
-- responsywny układ desktop / tablet / telefon,
-- własny branding mojV.
+- lokalnie aktualizowany pierścień postępu oraz czas do końca lekcji,
+- plan poniedziałek–piątek ułożony według wspólnych slotów godzinowych,
+- lokalną nawigację **poprzedni / bieżący / następny tydzień** bez requestu do portalu,
+- linię aktualnego czasu w bieżącym tygodniu,
+- wyróżnienie aktualnego dnia i trwającej lekcji,
+- oznaczenia zastępstw i odwołanych lekcji,
+- status obecności przy lekcjach,
+- podsumowanie obecności, nieobecności, spóźnień, usprawiedliwień i zwolnień,
+- listę ostatnich wpisów frekwencji,
+- wygląd oparty o zmienne motywu Home Assistant z akcentem mojV,
+- responsywny układ desktop / tablet / telefon; na telefonie poziome przewijanie jest ograniczone do samej tabeli planu.
+
+Ticker interfejsu działa co 10 sekund **lokalnie w przeglądarce** i nie wywołuje logowania ani zapytania WebSocket. Przełączanie dziecka, widoku i tygodnia również używa danych znajdujących się już w pamięci panelu.
 
 Sekcje wymagające danych, których LIVE jeszcze nie pobiera, nie są uzupełniane fikcyjnymi danymi.
 
@@ -122,22 +129,23 @@ Zdarzenia można podpiąć do `notify.mobile_app_*`, głośnika, komunikatora al
 
 ## Aktualny zakres LIVE
 
-W 0.6.4 działającą podstawą LIVE pozostają:
+W 0.7.0 działającą podstawą LIVE pozostają:
 
 - automatyczne wykrywanie 1..N dzieci,
-- plan lekcji,
+- plan lekcji w zakresie pobranym przez snapshot,
 - frekwencja,
 - stan aktualnej/następnej lekcji,
-- alerty wynikające z planu i frekwencji.
+- alerty wynikające z planu i frekwencji,
+- szybki panel **Dzisiaj / Plan / Frekwencja**.
 
-Oceny, uwagi, terminarz, wiadomości i kolejne moduły są rozwijane na tej samej modularnej warstwie danych.
+Oceny, uwagi, terminarz/prace domowe, wiadomości, osiągnięcia i zebrania są kolejnym etapem LIVE. Modele są już rozdzielone modułowo; nowe moduły będą pojawiały się w panelu dopiero po uzyskaniu prawdziwych danych.
 
 ## Diagnostyka
 
 Jeżeli logowanie albo integracja się nie załaduje:
 
 1. Otwórz **Ustawienia → System → Dzienniki** i wyszukaj `mojv`.
-2. Po starcie integracji szukaj wpisu w rodzaju `mojV integration version=0.6.4 mode=... auth_backend=...`.
+2. Po starcie integracji szukaj wpisu w rodzaju `mojV integration version=0.7.0 mode=... auth_backend=...`.
 3. Jeżeli używany jest helper, otwórz **Ustawienia → Apps / Aplikacje → mojV Auth Helper → Logi**.
 4. Po starcie helpera pierwszy wpis aplikacji powinien zawierać `mojV Auth Helper version=0.1.5`.
 5. Ponów próbę logowania.
@@ -162,9 +170,9 @@ Od Home Assistant 2026.3 custom integrations mogą dostarczać branding lokalnie
 - `client.py` — scala dane niezależnie od backendu logowania,
 - `coordinator.py` — kontrolowane odświeżanie danych,
 - `models.py` — wspólny model szkolny,
-- `logic.py` — lokalna logika czasu lekcji i stanów panelu,
+- `logic.py` — lokalna logika czasu lekcji i agregacja stanów frekwencji,
 - `panel.py` — backend panelu i WebSocket,
-- `frontend/school-panel.js` — panel **Szkoła**,
+- `frontend/school-panel.js` — jednorazowy shell, lokalny stan i widoki panelu **Szkoła**,
 - `notifications.py` — alerty i eventy,
 - `sensor.py`, `binary_sensor.py`, `calendar.py` — standardowe encje HA,
 - `config_flow.py` — konfiguracja GUI,
