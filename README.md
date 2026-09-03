@@ -6,9 +6,11 @@ Integracja Home Assistant skoncentrowana na planie lekcji, bieżącej/następnej
 
 ## Status
 
-**HACS 0.6.0 — LIVE + panel Szkoła + automatyczny helper przeglądarkowy.**
+**HACS 0.6.1 — LIVE + panel Szkoła + prebuilt helper przeglądarkowy.**
 
-Wersja 0.6.0 zachowuje obsługę **1..N dzieci**, rzeczywisty plan lekcji i frekwencję oraz dodaje bezpieczny lokalny mechanizm dla kont, na których portal szkolny wymaga pełnej przeglądarki.
+Wersja 0.6.1 zachowuje obsługę **1..N dzieci**, rzeczywisty plan lekcji i frekwencję oraz poprawia instalację **mojV Auth Helper** na Home Assistant. Helper nie jest już budowany lokalnie na urządzeniu użytkownika. Home Assistant pobiera gotowy, wieloarchitekturowy obraz kontenera z GHCR.
+
+To usuwa zależność instalacji helpera od dostępu urządzenia Home Assistant do PyPI podczas budowania obrazu i znacząco upraszcza instalację.
 
 mojV zawsze najpierw próbuje lekkiego logowania bez dodatkowego kontenera. Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie przełącza się na lokalną aplikację **mojV Auth Helper** z Chromium. Użytkownik nie wybiera backendu logowania ręcznie.
 
@@ -24,15 +26,16 @@ Zasady bezpieczeństwa helpera:
 - integracja HACS nie otrzymuje cookies ani kluczy sesji,
 - do integracji wracają tylko dane ucznia, plan lekcji i frekwencja,
 - helper nie wystawia portu do sieci LAN,
-- komunikacja z Home Assistant odbywa się w wewnętrznej sieci systemu.
+- komunikacja z Home Assistant odbywa się w wewnętrznej sieci systemu,
+- obraz helpera jest budowany w GitHub Actions i publikowany jako prebuilt multi-arch image dla `amd64` i `aarch64`.
 
-## Instalacja 0.6.0
+## Instalacja 0.6.1
 
 ### 1. Integracja HACS
 
 1. W HACS dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories, jeżeli repo nie jest jeszcze dodane.
 2. Wybierz `mojV` → **Download / Redownload / Update**.
-3. Zainstaluj wersję **0.6.0** lub nowszą.
+3. Zainstaluj wersję **0.6.1** lub nowszą.
 4. Uruchom ponownie Home Assistant.
 
 HACS instaluje integrację jako:
@@ -44,11 +47,13 @@ HACS instaluje integrację jako:
 Jeżeli Config Flow poinformuje, że portal wymaga pełnej przeglądarki:
 
 1. Otwórz **Ustawienia → Apps / Aplikacje → App Store**.
-2. Dodaj repozytorium `https://github.com/gekon27/mojV` do repozytoriów aplikacji.
-3. Zainstaluj **mojV Auth Helper**.
-4. Uruchom helper i pozostaw automatyczne uruchamianie przy starcie włączone.
-5. Wróć do **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
-6. Wybierz **Konto szkolne** i ponownie podaj login/alias/e-mail oraz hasło.
+2. Dodaj repozytorium `https://github.com/gekon27/mojV` do repozytoriów aplikacji, jeżeli nie jest jeszcze dodane.
+3. Odśwież App Store.
+4. Otwórz **mojV Auth Helper**.
+5. Zainstaluj helper. Home Assistant powinien pobrać gotowy obraz `ghcr.io/gekon27/mojv-auth-helper`, zamiast budować Dockerfile lokalnie.
+6. Uruchom helper i pozostaw automatyczne uruchamianie przy starcie włączone.
+7. Wróć do **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
+8. Wybierz **Konto szkolne** i ponownie podaj login/alias/e-mail oraz hasło.
 
 mojV sam wykryje uruchomiony helper i użyje go tylko wtedy, gdy zwykłe logowanie zostanie zatrzymane przez weryfikację wymagającą przeglądarki.
 
@@ -115,7 +120,7 @@ Zdarzenia można podpiąć do `notify.mobile_app_*`, głośnika, komunikatora al
 
 ## Aktualny zakres LIVE
 
-W 0.6.0 działającą podstawą LIVE pozostają:
+W 0.6.1 działającą podstawą LIVE pozostają:
 
 - automatyczne wykrywanie 1..N dzieci,
 - plan lekcji,
@@ -161,7 +166,8 @@ Od Home Assistant 2026.3 custom integrations mogą dostarczać branding lokalnie
 
 ### mojV Auth Helper
 
-- `mojv_auth_helper/Dockerfile` — mały obraz z Chromium i ChromeDriver,
+- `mojv_auth_helper/Dockerfile` — obraz z Chromium i ChromeDriver budowany w CI,
+- `mojv_auth_helper/config.yaml` — wskazuje gotowy obraz GHCR pobierany przez Supervisor,
 - `rootfs/app/server.py` — prywatne API helpera oraz obsługa przeglądarki,
 - `rootfs/app/auth_runtime.py` — parser kontekstu i filtracja danych publicznych.
 
