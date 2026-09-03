@@ -111,8 +111,30 @@ def _student_dict(snapshot, now) -> dict[str, Any]:
                 "value": grade.value,
                 "date": grade.date.isoformat(),
                 "description": grade.description,
+                "category": grade.category,
+                "period": grade.period,
             }
             for grade in snapshot.grades
+        ],
+        "final_grades": [
+            {
+                "subject": grade.subject,
+                "proposed": grade.proposed,
+                "final": grade.final,
+                "period": grade.period,
+            }
+            for grade in snapshot.final_grades
+        ],
+        "schoolwork": [
+            {
+                "id": item.work_id,
+                "date": item.date.isoformat(),
+                "subject": item.subject,
+                "title": item.title,
+                "kind": item.kind,
+                "description": item.description,
+            }
+            for item in snapshot.schoolwork
         ],
         "remarks": [
             {
