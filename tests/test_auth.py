@@ -76,6 +76,21 @@ def test_student_target_requires_core_fields() -> None:
     assert target.base_url.endswith("/gryfino")
 
 
+def test_student_target_does_not_require_journal_id_for_live_plan() -> None:
+    target = auth._target_from_row(
+        "gryfino",
+        {
+            "idUczen": 123,
+            "uczen": "Jan Kowalski",
+            "oddzial": "5A",
+            "key": "session-key",
+        },
+    )
+    assert target is not None
+    assert target.student_id == "123"
+    assert target.diary_id == ""
+
+
 def test_browser_verification_marker_is_detected() -> None:
     marker = "Zabezpieczenie przed robotami"
     assert auth._looks_like_browser_challenge(marker)
