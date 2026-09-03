@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Test mojV",
-        "description": "Tryb testowy tworzy pełny zestaw encji bez logowania do eduVULCAN. Ustaw liczbę dzieci przypisanych do konta; u Ciebie pozostaw 2.",
+        "description": "Tryb testowy tworzy pełny zestaw encji bez logowania do portalu szkolnego. Ustaw liczbę dzieci przypisanych do konta; u Ciebie pozostaw 2.",
         "data": {
           "demo_students": "Liczba dzieci"
         }
