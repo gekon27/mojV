@@ -7,6 +7,8 @@ HELPER_SLUG_SUFFIX = "mojv_auth_helper"
 _FORBIDDEN_SECRET_FIELDS = {
     "cookie",
     "cookies",
+    "diary_id",
+    "journal_id",
     "password",
     "session_key",
     "token",
@@ -43,6 +45,20 @@ def select_helper_slug(payload: Any) -> str | None:
     return None
 
 
+def _contains_secret_field(value: Any) -> bool:
+    """Detect forbidden authentication fields anywhere in a helper payload."""
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if str(key).lower() in _FORBIDDEN_SECRET_FIELDS:
+                return True
+            if _contains_secret_field(child):
+                return True
+        return False
+    if isinstance(value, (list, tuple)):
+        return any(_contains_secret_field(item) for item in value)
+    return False
+
+
 def validate_snapshot(payload: Any) -> bool:
     """Validate that helper output contains only public school data."""
     if not isinstance(payload, dict):
@@ -53,8 +69,7 @@ def validate_snapshot(payload: Any) -> bool:
     for student in students:
         if not isinstance(student, dict):
             return False
-        lowered = {str(key).lower() for key in student}
-        if lowered & _FORBIDDEN_SECRET_FIELDS:
+        if _contains_secret_field(student):
             return False
         if not str(student.get("student_id") or ""):
             return False
