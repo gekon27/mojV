@@ -11,9 +11,9 @@
       },
       "live": {
         "title": "School account",
-        "description": "Enter the credentials used by the school portal. mojV will verify the session and discover all students attached to the account.",
+        "description": "Enter the login or alias and password used by the school portal. mojV first tries the lightweight connection and automatically uses the local browser helper when full-browser verification is required.",
         "data": {
-          "username": "Login / e-mail",
+          "username": "Login / alias / e-mail",
           "password": "Password"
         }
       },
@@ -27,7 +27,9 @@
     },
     "error": {
       "invalid_auth": "Invalid login or password.",
-      "browser_verification_required": "The portal requires verification in a full browser. Check the Home Assistant log; a browser-auth helper will be needed for this account.",
+      "browser_verification_required": "The school portal requires a full browser for this account.",
+      "helper_required": "The school portal requires a full browser. Install and start the 'mojV Auth Helper' Home Assistant app from the same repository, then try again.",
+      "helper_failed": "The local mojV Auth Helper is running, but browser login did not complete. Check the mojV Auth Helper app log.",
       "no_students": "Login succeeded, but no student was found on this account.",
       "cannot_connect": "Could not connect to the school portal.",
       "unknown": "Unexpected login error. Check the Home Assistant log."
