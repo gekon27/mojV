@@ -3,15 +3,37 @@
   "config": {
     "step": {
       "user": {
-        "title": "Test mojV",
-        "description": "Demo mode creates the full entity set without logging in to the school portal. Select how many students should be simulated.",
+        "title": "Set up mojV",
+        "description": "Choose a live school account or deterministic demo data.",
+        "data": {
+          "mode": "Mode"
+        }
+      },
+      "live": {
+        "title": "School account",
+        "description": "Enter the credentials used by the school portal. mojV will verify the session and discover all students attached to the account.",
+        "data": {
+          "username": "Login / e-mail",
+          "password": "Password"
+        }
+      },
+      "demo": {
+        "title": "Demo mode",
+        "description": "Create a complete local test dataset without connecting to the school portal.",
         "data": {
           "demo_students": "Number of students"
         }
       }
     },
+    "error": {
+      "invalid_auth": "Invalid login or password.",
+      "browser_verification_required": "The portal requires verification in a full browser. Check the Home Assistant log; a browser-auth helper will be needed for this account.",
+      "no_students": "Login succeeded, but no student was found on this account.",
+      "cannot_connect": "Could not connect to the school portal.",
+      "unknown": "Unexpected login error. Check the Home Assistant log."
+    },
     "abort": {
-      "already_configured": "The mojV demo entry is already configured."
+      "already_configured": "This mojV account is already configured."
     }
   }
 }
