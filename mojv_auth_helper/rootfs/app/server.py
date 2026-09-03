@@ -4,10 +4,8 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import hashlib
 import json
 import logging
-from pathlib import Path
 import shutil
 from typing import Any
 from urllib.parse import urlencode, urlparse
@@ -22,7 +20,12 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
 
-from auth_runtime import StudentTarget, public_snapshot_row, targets_from_context
+from auth_runtime import (
+    StudentTarget,
+    credential_cache_key,
+    public_snapshot_row,
+    targets_from_context,
+)
 
 _LOGGER = logging.getLogger("mojv_auth_helper")
 _PORTAL_ROOT = "https://edu" + "vulcan.pl"
@@ -80,10 +83,6 @@ _ACCOUNTS: dict[str, BrowserAccount] = {}
 _BROWSER_LOCK = asyncio.Lock()
 
 
-def _account_key(username: str) -> str:
-    return hashlib.sha256(username.strip().lower().encode("utf-8")).hexdigest()
-
-
 def _browser_options() -> Options:
     options = Options()
     binary = shutil.which("chromium-browser") or shutil.which("chromium")
@@ -131,13 +130,21 @@ def _find_input(driver: webdriver.Chrome, candidates: tuple[str, ...]) -> WebEle
     return None
 
 
-def _wait_for_input(driver: webdriver.Chrome, candidates: tuple[str, ...], timeout: int = 20) -> WebElement:
+def _wait_for_input(
+    driver: webdriver.Chrome,
+    candidates: tuple[str, ...],
+    timeout: int = 20,
+) -> WebElement:
     try:
-        return WebDriverWait(driver, timeout).until(lambda current: _find_input(current, candidates))
+        return WebDriverWait(driver, timeout).until(
+            lambda current: _find_input(current, candidates)
+        )
     except TimeoutException as err:
         lower = _page_lower(driver)
         if any(marker in lower for marker in _CHALLENGE_MARKERS):
-            raise BrowserVerificationFailed("Browser verification did not complete") from err
+            raise BrowserVerificationFailed(
+                "Browser verification did not complete"
+            ) from err
         raise BrowserAuthError("Expected login field was not found") from err
 
 
@@ -170,7 +177,9 @@ def _wait_for_diary_links(driver: webdriver.Chrome) -> list[str]:
         if any(marker in lower for marker in _INVALID_AUTH_MARKERS):
             raise InvalidCredentials("Credentials were rejected") from err
         if any(marker in lower for marker in _CHALLENGE_MARKERS):
-            raise BrowserVerificationFailed("Browser verification did not complete") from err
+            raise BrowserVerificationFailed(
+                "Browser verification did not complete"
+            ) from err
         raise NoStudents("No diary links were found after login") from err
 
 
@@ -186,7 +195,9 @@ def _wait_for_student_app(driver: webdriver.Chrome) -> str:
     except TimeoutException as err:
         lower = _page_lower(driver)
         if any(marker in lower for marker in _CHALLENGE_MARKERS):
-            raise BrowserVerificationFailed("Journal browser verification did not complete") from err
+            raise BrowserVerificationFailed(
+                "Journal browser verification did not complete"
+            ) from err
         raise BrowserAuthError("Journal application did not open") from err
 
 
@@ -227,7 +238,9 @@ def _browser_json(driver: webdriver.Chrome, url: str) -> Any:
     except json.JSONDecodeError as err:
         lower = text.lower()
         if any(marker in lower for marker in _CHALLENGE_MARKERS):
-            raise BrowserVerificationFailed("Browser verification interrupted API access") from err
+            raise BrowserVerificationFailed(
+                "Browser verification interrupted API access"
+            ) from err
         raise BrowserAuthError("Journal API returned invalid JSON") from err
 
 
@@ -237,13 +250,26 @@ def _login_browser(username: str, password: str) -> BrowserAccount:
         driver.get(_LOGIN_URL)
         username_input = _wait_for_input(
             driver,
-            ("UserName", "Alias", "username", "alias", "Login", "login", "email", "Email"),
+            (
+                "UserName",
+                "Alias",
+                "username",
+                "alias",
+                "Login",
+                "login",
+                "email",
+                "Email",
+            ),
         )
         username_input.clear()
         username_input.send_keys(username)
         username_input.send_keys(Keys.ENTER)
 
-        password_input = _wait_for_input(driver, ("Password", "password"), timeout=25)
+        password_input = _wait_for_input(
+            driver,
+            ("Password", "password"),
+            timeout=25,
+        )
         password_input.clear()
         password_input.send_keys(password)
         password_input.send_keys(Keys.ENTER)
@@ -345,8 +371,13 @@ def _snapshot_browser(account: BrowserAccount) -> dict[str, Any]:
     }
 
 
-async def _get_account(username: str, password: str, *, force: bool = False) -> BrowserAccount:
-    key = _account_key(username)
+async def _get_account(
+    username: str,
+    password: str,
+    *,
+    force: bool = False,
+) -> BrowserAccount:
+    key = credential_cache_key(username, password)
     async with _BROWSER_LOCK:
         cached = _ACCOUNTS.get(key)
         if cached is not None and not force and cached.is_fresh():
@@ -363,13 +394,22 @@ async def _request_credentials(request: web.Request) -> tuple[str, str]:
     try:
         payload = await request.json()
     except (json.JSONDecodeError, ValueError):
-        raise web.HTTPBadRequest(text='{"error":"invalid_json"}', content_type="application/json")
+        raise web.HTTPBadRequest(
+            text='{"error":"invalid_json"}',
+            content_type="application/json",
+        )
     if not isinstance(payload, dict):
-        raise web.HTTPBadRequest(text='{"error":"invalid_json"}', content_type="application/json")
+        raise web.HTTPBadRequest(
+            text='{"error":"invalid_json"}',
+            content_type="application/json",
+        )
     username = str(payload.get("username") or "").strip()
     password = str(payload.get("password") or "")
     if not username or not password:
-        raise web.HTTPBadRequest(text='{"error":"missing_credentials"}', content_type="application/json")
+        raise web.HTTPBadRequest(
+            text='{"error":"missing_credentials"}',
+            content_type="application/json",
+        )
     return username, password
 
 
@@ -393,8 +433,8 @@ async def health(_: web.Request) -> web.Response:
 async def index(_: web.Request) -> web.Response:
     return web.Response(
         text=(
-            "mojV Auth Helper is running. This local service only handles browser-backed "
-            "authentication for the mojV Home Assistant integration."
+            "mojV Auth Helper is running. This local service only handles "
+            "browser-backed authentication for the mojV Home Assistant integration."
         )
     )
 
@@ -417,7 +457,9 @@ async def snapshot(request: web.Request) -> web.Response:
         async with _BROWSER_LOCK:
             result = await asyncio.to_thread(_snapshot_browser, browser_account)
         if result["students"] and all(
-            row.get("errors") and row.get("timetable") is None and row.get("attendance") is None
+            row.get("errors")
+            and row.get("timetable") is None
+            and row.get("attendance") is None
             for row in result["students"]
         ):
             browser_account = await _get_account(username, password, force=True)
