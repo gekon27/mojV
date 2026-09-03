@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.6] - 2026-09-03
+
+- rozszerzony publiczny snapshot helpera o okresy klasyfikacyjne, oceny i terminarz/prace szkolne,
+- plan lekcji pobiera pełny zakres danych wymagany przez aktualny endpoint,
+- identyfikator dziennika pozostaje wyłącznie wewnątrz helpera i nie jest zwracany do Home Assistant,
+- każdy moduł danych jest izolowany: awaria ocen lub terminarza nie blokuje planu i frekwencji,
+- diagnostyka modułów zwraca wyłącznie typ błędu bez URL, parametrów zapytania i sekretów,
+- Core rekurencyjnie odrzuca payload zawierający pola tokenów, cookies, kluczy sesji lub identyfikatory routingu uwierzytelnienia.
+
 ## [0.1.5] - 2026-09-03
 
 - helper zapisuje przy starcie `mojV Auth Helper version=<wersja>`,
