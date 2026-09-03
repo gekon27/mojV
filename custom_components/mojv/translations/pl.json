@@ -3,15 +3,37 @@
   "config": {
     "step": {
       "user": {
-        "title": "Test mojV",
-        "description": "Tryb testowy tworzy pełny zestaw encji bez logowania do portalu szkolnego. Ustaw liczbę dzieci przypisanych do konta; u Ciebie pozostaw 2.",
+        "title": "Konfiguracja mojV",
+        "description": "Wybierz prawdziwe konto szkolne albo dane demonstracyjne.",
+        "data": {
+          "mode": "Tryb"
+        }
+      },
+      "live": {
+        "title": "Konto szkolne",
+        "description": "Podaj dane używane do logowania w portalu szkolnym. mojV sprawdzi sesję i automatycznie wykryje wszystkie dzieci przypisane do konta.",
+        "data": {
+          "username": "Login / e-mail",
+          "password": "Hasło"
+        }
+      },
+      "demo": {
+        "title": "Tryb demonstracyjny",
+        "description": "Tworzy pełne dane testowe lokalnie, bez łączenia z portalem szkolnym.",
         "data": {
           "demo_students": "Liczba dzieci"
         }
       }
     },
+    "error": {
+      "invalid_auth": "Nieprawidłowy login lub hasło.",
+      "browser_verification_required": "Portal wymaga weryfikacji w pełnej przeglądarce. Sprawdź dziennik Home Assistant; dla tego konta będzie potrzebny mały helper logowania.",
+      "no_students": "Logowanie powiodło się, ale na koncie nie znaleziono żadnego dziecka.",
+      "cannot_connect": "Nie można połączyć się z portalem szkolnym.",
+      "unknown": "Nieoczekiwany błąd logowania. Sprawdź dziennik Home Assistant."
+    },
     "abort": {
-      "already_configured": "Tryb testowy mojV jest już skonfigurowany."
+      "already_configured": "To konto mojV jest już skonfigurowane."
     }
   }
 }
