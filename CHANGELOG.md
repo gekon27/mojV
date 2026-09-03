@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.4] - 2026-09-03
+
+- integracja zapisuje przy starcie numer wersji z własnego `manifest.json`,
+- log Core pokazuje także tryb pracy i backend uwierzytelniania bez ujawniania danych logowania,
+- helper zapisuje przy starcie numer wersji obrazu przekazany przez `MOJV_HELPER_VERSION`,
+- helper podniesiony do `0.1.5`, aby App Store jednoznacznie widział zmianę,
+- README, manifest i changelog zsynchronizowane do `0.6.4`.
+
 ## [0.6.3] - 2026-09-03
 
 - zsynchronizowana wersja integracji HACS z aktualnym helperem `0.1.4`,
