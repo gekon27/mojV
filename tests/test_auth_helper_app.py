@@ -89,15 +89,32 @@ def test_browser_cache_key_is_bound_to_both_username_and_password() -> None:
     assert "secret-one" not in first
 
 
-def test_browser_runs_on_virtual_display_instead_of_headless_mode() -> None:
+def test_browser_runs_inside_xvfb_with_classic_headless_mode() -> None:
     server = SERVER.read_text(encoding="utf-8")
     dockerfile = DOCKERFILE.read_text(encoding="utf-8").lower()
     run_script = RUN_SCRIPT.read_text(encoding="utf-8")
 
-    assert '--headless' not in server
+    assert '--headless=new' not in server
+    assert 'options.add_argument("--headless")' in server
     assert 'xvfb' in dockerfile
     assert 'Xvfb' in run_script
     assert 'DISPLAY=' in run_script
+
+
+def test_helper_logs_safe_auth_stages_and_redacted_screenshot() -> None:
+    server = SERVER.read_text(encoding="utf-8")
+
+    for stage in (
+        "login-page",
+        "username-submitted",
+        "password-submitted",
+        "diary-links",
+        "student-app",
+        "context",
+    ):
+        assert stage in server
+    assert "mojv_auth_error.png" in server
+    assert "input.value = ''" in server or 'input.value = ""' in server
 
 
 def test_helper_health_version_comes_from_image_build_version() -> None:
