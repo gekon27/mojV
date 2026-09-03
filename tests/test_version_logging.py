@@ -8,6 +8,8 @@ def test_integration_startup_logs_manifest_version() -> None:
 
 
 def test_helper_startup_logs_runtime_version() -> None:
-    source = Path("mojv_auth_helper/rootfs/app/server.py").read_text(encoding="utf-8")
-    assert 'mojV Auth Helper version=%s' in source
-    assert '_VERSION' in source
+    source = Path(
+        "mojv_auth_helper/rootfs/etc/services.d/mojv-auth/run"
+    ).read_text(encoding="utf-8")
+    assert "mojV Auth Helper version=" in source
+    assert "MOJV_HELPER_VERSION" in source
