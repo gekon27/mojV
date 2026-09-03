@@ -3,7 +3,7 @@
   "name": "mojV",
   "codeowners": ["@gekon27"],
   "config_flow": true,
-  "dependencies": ["frontend", "http", "panel_custom", "websocket_api"],
+  "dependencies": ["frontend", "http", "panel_custom", "persistent_notification", "websocket_api"],
   "documentation": "https://github.com/gekon27/mojV",
   "integration_type": "service",
   "iot_class": "cloud_polling",
