@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4] - 2026-09-03
+
+- poprawiono przejście z dashboardu do dziennika: helper akceptuje poprawne przekierowanie na host ucznia bez wymagania ścieżki `/App/...`,
+- tenant/miasto jest wykrywane z pierwszego segmentu ścieżki po przekierowaniu SSO,
+- wolne ładowanie strony nadal jest izolowane per link, a diagnostyka błędu zawiera bezpieczną lokalizację bez query string i sekretów,
+- zachowano obsługę 1..N dzieci i filtrowanie duplikatów.
+
 ## [0.1.3] - 2026-09-03
 
 - timeout renderera podczas otwierania pojedynczego linku dziennika nie przerywa już całego logowania,
