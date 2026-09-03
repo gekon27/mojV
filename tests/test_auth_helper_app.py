@@ -47,12 +47,15 @@ def test_context_rows_become_internal_targets_without_secret_in_public_row() -> 
     assert len(targets) == 1
     target = targets[0]
     assert target.session_key == "SECRET-KEY"
+    assert target.journal_id == "99"
     assert target.public_dict() == {
         "student_id": "12",
         "name": "Jan Kowalski",
         "class_name": "5A",
     }
-    assert "SECRET" not in str(target.public_dict())
+    public = str(target.public_dict())
+    assert "SECRET" not in public
+    assert "99" not in public
 
 
 def test_snapshot_student_never_contains_browser_or_session_secrets() -> None:
@@ -64,6 +67,7 @@ def test_snapshot_student_never_contains_browser_or_session_secrets() -> None:
         city="gryfino",
         app_url="https://uczen.example/gryfino/App/abc/tablica",
         session_key="SECRET",
+        journal_id="99",
     )
     row = runtime.public_snapshot_row(target, timetable=[], attendance=[], errors={})
     assert set(row) == {
@@ -74,7 +78,9 @@ def test_snapshot_student_never_contains_browser_or_session_secrets() -> None:
         "attendance",
         "errors",
     }
-    assert "SECRET" not in str(row)
+    public = str(row)
+    assert "SECRET" not in public
+    assert "99" not in public
 
 
 def test_browser_cache_key_is_bound_to_both_username_and_password() -> None:
