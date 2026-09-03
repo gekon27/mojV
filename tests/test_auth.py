@@ -57,6 +57,63 @@ def test_city_is_read_from_student_url() -> None:
     assert auth._city_from_url("https://example.invalid/gryfino/App/x") is None
 
 
+def test_app_key_is_read_from_journal_url() -> None:
+    assert auth._app_key_from_url(
+        "https://uczen.example.invalid/gryfino/App/opaque-key/tablica"
+    ) == "opaque-key"
+    assert auth._app_key_from_url(
+        "https://uczen.example.invalid/gryfino/api/Context"
+    ) == ""
+
+
+def test_context_records_unwrap_data_envelope() -> None:
+    payload = {
+        "data": {
+            "uczniowie": [
+                {
+                    "idUczen": 123,
+                    "uczen": "Jan Kowalski",
+                    "oddzial": "5A",
+                    "key": "session-key",
+                }
+            ]
+        }
+    }
+    rows = auth._records(payload)
+    assert len(rows) == 1
+    assert rows[0]["uczen"] == "Jan Kowalski"
+
+
+def test_context_records_unwrap_nested_data_envelopes() -> None:
+    payload = {
+        "data": {
+            "data": {
+                "uczniowie": [
+                    {"uczen": "Anna Kowalska", "key": "session-key"}
+                ]
+            }
+        }
+    }
+    rows = auth._records(payload)
+    assert len(rows) == 1
+    assert rows[0]["uczen"] == "Anna Kowalska"
+
+
+def test_federation_form_is_detected_without_copying_unrelated_forms() -> None:
+    page = auth._parse_page(
+        '<form action="/normal"><input name="x" value="1"></form>'
+        '<form action="https://example.invalid/sso" method="post">'
+        '<input type="hidden" name="wa" value="wsignin1.0">'
+        '<input type="hidden" name="wresult" value="signed-payload">'
+        '</form>'
+    )
+    form = auth._find_federation_form(page)
+    assert form is not None
+    assert form.action == "https://example.invalid/sso"
+    assert form.values["wresult"] == "signed-payload"
+    assert "x" not in form.values
+
+
 def test_student_target_requires_core_fields() -> None:
     target = auth._target_from_row(
         "gryfino",
