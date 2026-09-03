@@ -106,6 +106,9 @@ def public_snapshot_row(
     *,
     timetable: Any,
     attendance: Any,
+    classification_periods: Any = None,
+    grades_by_period: dict[str, Any] | None = None,
+    schoolwork: Any = None,
     errors: dict[str, str],
 ) -> dict[str, Any]:
     """Build one helper response row without any authentication material."""
@@ -113,5 +116,8 @@ def public_snapshot_row(
         **target.public_dict(),
         "timetable": timetable,
         "attendance": attendance,
+        "classification_periods": classification_periods,
+        "grades_by_period": dict(grades_by_period or {}),
+        "schoolwork": schoolwork,
         "errors": dict(errors),
     }
