@@ -49,11 +49,18 @@ class MojVClient:
             self._demo_anchor = now.replace(second=0, microsecond=0)
 
         anchor = self._demo_anchor
+        week_start = anchor - timedelta(days=anchor.weekday())
         students: list[StudentSnapshot] = []
-        subjects = (
-            ("Matematyka", "Język polski", "Informatyka"),
-            ("Język angielski", "Przyroda", "WF"),
-            ("Historia", "Matematyka", "Plastyka"),
+        subject_pool = (
+            "Matematyka",
+            "Język polski",
+            "Język angielski",
+            "Przyroda",
+            "Historia",
+            "Informatyka",
+            "Plastyka",
+            "Muzyka",
+            "WF",
         )
 
         for index in range(self._demo_students):
@@ -63,8 +70,6 @@ class MojVClient:
                 name=f"Dziecko {student_no}",
                 class_name=f"{student_no + 3}A",
             )
-            selected = subjects[index % len(subjects)]
-            offset = timedelta(minutes=index * 2)
             if index == 0:
                 current_attendance = ATTENDANCE_ABSENT
             elif index == 1:
@@ -72,42 +77,53 @@ class MojVClient:
             else:
                 current_attendance = ATTENDANCE_PRESENT
 
-            lessons = (
-                Lesson(
-                    number=1,
-                    subject=selected[0],
-                    start=anchor - timedelta(minutes=40) + offset,
-                    end=anchor + timedelta(minutes=5) + offset,
-                    room=str(101 + index),
-                    teacher="Nauczyciel testowy",
-                    attendance=current_attendance,
-                ),
-                Lesson(
-                    number=2,
-                    subject=selected[1],
-                    start=anchor + timedelta(minutes=15) + offset,
-                    end=anchor + timedelta(minutes=60) + offset,
-                    room=str(201 + index),
-                    teacher="Nauczyciel testowy",
-                    attendance=ATTENDANCE_PRESENT,
-                ),
-                Lesson(
-                    number=3,
-                    subject=selected[2],
-                    start=anchor + timedelta(minutes=70) + offset,
-                    end=anchor + timedelta(minutes=115) + offset,
-                    room=(
-                        "Sala gimnastyczna"
-                        if selected[2] == "WF"
-                        else str(301 + index)
-                    ),
-                    teacher="Nauczyciel testowy",
-                ),
-            )
+            lessons: list[Lesson] = []
+            for weekday in range(5):
+                day_date = (week_start + timedelta(days=weekday)).date()
+                if weekday == anchor.weekday():
+                    starts = (
+                        anchor - timedelta(minutes=150),
+                        anchor - timedelta(minutes=95),
+                        anchor - timedelta(minutes=40),
+                        anchor + timedelta(minutes=15),
+                        anchor + timedelta(minutes=70),
+                    )
+                else:
+                    day_base = (week_start + timedelta(days=weekday)).replace(
+                        hour=8, minute=0, second=0, microsecond=0
+                    )
+                    starts = tuple(
+                        day_base + timedelta(minutes=55 * lesson_index)
+                        for lesson_index in range(5)
+                    )
+
+                for lesson_index, start in enumerate(starts, start=1):
+                    subject = subject_pool[
+                        (index * 2 + weekday * 3 + lesson_index - 1) % len(subject_pool)
+                    ]
+                    attendance = ATTENDANCE_PRESENT
+                    if weekday == anchor.weekday() and lesson_index == 3:
+                        attendance = current_attendance
+                    lessons.append(
+                        Lesson(
+                            number=lesson_index,
+                            subject=subject,
+                            start=start,
+                            end=start + timedelta(minutes=45),
+                            room=(
+                                "Sala gimnastyczna"
+                                if subject == "WF"
+                                else str(100 + weekday * 10 + lesson_index + index)
+                            ),
+                            teacher="Nauczyciel testowy",
+                            attendance=attendance,
+                        )
+                    )
+
             grades = (
                 Grade(
                     grade_id=f"demo-grade-{student_no}-1",
-                    subject=selected[1],
+                    subject=subject_pool[(index + 1) % len(subject_pool)],
                     value="5" if index % 2 == 0 else "4+",
                     date=anchor - timedelta(hours=2),
                     description="Sprawdzian — wpis testowy",
@@ -129,7 +145,7 @@ class MojVClient:
             students.append(
                 StudentSnapshot(
                     student=student,
-                    lessons=lessons,
+                    lessons=tuple(sorted(lessons, key=lambda item: item.start)),
                     grades=grades,
                     remarks=remarks,
                 )
