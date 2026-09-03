@@ -61,29 +61,81 @@ class SchoolApiClient:
         common = {"key": student.session_key}
         timetable_from = now - timedelta(days=now.weekday() + 7)
         timetable_to = now + timedelta(days=21)
+        schoolwork_from = now.replace(day=1) - timedelta(days=1)
+        schoolwork_to = now + timedelta(days=61)
 
-        requests = {
+        requests: dict[str, Any] = {
             "timetable": self._transport.get_json(
                 f"{student.base_url}/api/PlanZajec",
                 {
                     **common,
                     "dataOd": self._stamp(timetable_from, start=True),
                     "dataDo": self._stamp(timetable_to, start=False),
+                    "zakresDanych": "2",
                 },
             ),
             "attendance": self._transport.get_json(
                 f"{student.base_url}/api/Frekwencja", common
             ),
+            "schoolwork": self._transport.get_json(
+                f"{student.base_url}/api/SprawdzianyZadaniaDomowe",
+                {
+                    **common,
+                    "dataOd": self._stamp(schoolwork_from, start=True),
+                    "dataDo": self._stamp(schoolwork_to, start=False),
+                },
+            ),
         }
+        if student.journal_id:
+            requests["classification_periods"] = self._transport.get_json(
+                f"{student.base_url}/api/OkresyKlasyfikacyjne",
+                {**common, "idDziennik": student.journal_id},
+            )
 
         names = tuple(requests)
         results = await asyncio.gather(*requests.values(), return_exceptions=True)
         for name, result in zip(names, results, strict=True):
             if isinstance(result, Exception):
-                bundle.errors[name] = f"{type(result).__name__}: {result}"
+                bundle.errors[name] = self._error_text(result)
             else:
                 setattr(bundle, name, result)
+
+        await self._fetch_grades(student, bundle)
         return bundle
+
+    async def _fetch_grades(
+        self,
+        student: StudentContext,
+        bundle: RawStudentBundle,
+    ) -> None:
+        periods = bundle.classification_periods
+        if not student.journal_id or not isinstance(periods, list):
+            return
+
+        period_ids = tuple(
+            str(row.get("id"))
+            for row in periods
+            if isinstance(row, dict) and row.get("id") is not None
+        )
+        if not period_ids:
+            return
+
+        requests = tuple(
+            self._transport.get_json(
+                f"{student.base_url}/api/Oceny",
+                {
+                    "key": student.session_key,
+                    "idOkresKlasyfikacyjny": period_id,
+                },
+            )
+            for period_id in period_ids
+        )
+        results = await asyncio.gather(*requests, return_exceptions=True)
+        for period_id, result in zip(period_ids, results, strict=True):
+            if isinstance(result, Exception):
+                bundle.errors[f"grades:{period_id}"] = self._error_text(result)
+            else:
+                bundle.grades_by_period[period_id] = result
 
     async def fetch_many(
         self,
@@ -101,7 +153,7 @@ class SchoolApiClient:
                 bundles.append(
                     RawStudentBundle(
                         student=student,
-                        errors={"student": f"{type(result).__name__}: {result}"},
+                        errors={"student": self._error_text(result)},
                     )
                 )
             else:
@@ -112,3 +164,8 @@ class SchoolApiClient:
     def _stamp(value: datetime, *, start: bool) -> str:
         suffix = "00:00:00.000Z" if start else "23:59:59.999Z"
         return f"{value:%Y-%m-%d}T{suffix}"
+
+    @staticmethod
+    def _error_text(error: Exception) -> str:
+        """Return short diagnostic text without request parameters or auth data."""
+        return type(error).__name__
