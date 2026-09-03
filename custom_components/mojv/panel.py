@@ -50,7 +50,7 @@ def _student_dict(snapshot, now) -> dict[str, Any]:
         "next": _lesson_dict(upcoming, now),
         "lessons": [
             {
-                **_lesson_dict(lesson, now),
+                **(_lesson_dict(lesson, now) or {}),
                 "current": lesson == current,
             }
             for lesson in lessons_today(snapshot, now)
@@ -117,9 +117,14 @@ async def async_register_school_panel(hass: HomeAssistant) -> None:
         return
 
     frontend_path = Path(__file__).parent / "frontend"
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(PANEL_STATIC_URL, str(frontend_path), False)]
-    )
+    try:
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(PANEL_STATIC_URL, str(frontend_path), False)]
+        )
+    except RuntimeError:
+        # Static routes stay registered across config-entry reloads.
+        pass
+
     websocket_api.async_register_command(hass, websocket_panel_data)
     await panel_custom.async_register_panel(
         hass,
