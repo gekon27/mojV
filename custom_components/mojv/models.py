@@ -7,7 +7,7 @@ from datetime import datetime
 
 @dataclass(frozen=True, slots=True)
 class Student:
-    """A student attached to the eduVULCAN account."""
+    """A student attached to the configured school account."""
 
     student_id: str
     name: str
@@ -29,11 +29,36 @@ class Lesson:
 
 
 @dataclass(frozen=True, slots=True)
+class Grade:
+    """A single grade entry."""
+
+    grade_id: str
+    subject: str
+    value: str
+    date: datetime
+    description: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class Remark:
+    """A school remark or note."""
+
+    remark_id: str
+    date: datetime
+    text: str
+    author: str = ""
+    category: str = ""
+    points: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class StudentSnapshot:
     """Current data for one student."""
 
     student: Student
     lessons: tuple[Lesson, ...]
+    grades: tuple[Grade, ...] = ()
+    remarks: tuple[Remark, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
