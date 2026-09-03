@@ -23,7 +23,15 @@ from .const import (
     ATTENDANCE_ABSENT,
     ATTENDANCE_LATE,
     ATTENDANCE_PRESENT,
+    AUTH_BACKEND_HELPER,
+    AUTH_BACKEND_HTTP,
     MODE_DEMO,
+)
+from .helper_gateway import (
+    HelperGateway,
+    HelperInvalidAuth,
+    HelperRequestError,
+    HelperUnavailable,
 )
 from .models import AccountSnapshot, Grade, Lesson, Remark, Student, StudentSnapshot
 from .parsers.timetable import parse_timetable
@@ -76,11 +84,15 @@ class MojVClient:
         *,
         username: str = "",
         password: str = "",
+        auth_backend: str = AUTH_BACKEND_HTTP,
+        helper_gateway: HelperGateway | None = None,
     ) -> None:
         self._mode = mode
         self._demo_students = demo_students
         self._username = username
         self._password = password
+        self._auth_backend = auth_backend
+        self._helper_gateway = helper_gateway
         self._demo_anchor = None
         self._session: aiohttp.ClientSession | None = None
         self._targets: tuple[StudentTarget, ...] = ()
@@ -89,14 +101,88 @@ class MojVClient:
         """Fetch data for all students."""
         if self._mode == MODE_DEMO:
             return self._build_demo_snapshot()
+        if self._auth_backend == AUTH_BACKEND_HELPER:
+            return await self._async_fetch_helper()
         return await self._async_fetch_live()
 
     async def async_close(self) -> None:
-        """Close the dedicated authenticated HTTP session."""
+        """Close the dedicated direct-HTTP session, if one exists."""
         if self._session is not None and not self._session.closed:
             await self._session.close()
         self._session = None
         self._targets = ()
+
+    def _student_snapshot(
+        self,
+        *,
+        student_id: str,
+        name: str,
+        class_name: str,
+        timetable: Any,
+        attendance: Any,
+    ) -> StudentSnapshot:
+        lessons = parse_timetable(timetable, attendance)
+        timezone = dt_util.DEFAULT_TIME_ZONE
+        aware_lessons = tuple(
+            replace(
+                lesson,
+                start=(
+                    lesson.start.replace(tzinfo=timezone)
+                    if lesson.start.tzinfo is None
+                    else lesson.start
+                ),
+                end=(
+                    lesson.end.replace(tzinfo=timezone)
+                    if lesson.end.tzinfo is None
+                    else lesson.end
+                ),
+            )
+            for lesson in lessons
+        )
+        return StudentSnapshot(
+            student=Student(
+                student_id=str(student_id),
+                name=str(name),
+                class_name=str(class_name),
+            ),
+            lessons=aware_lessons,
+        )
+
+    async def _async_fetch_helper(self) -> AccountSnapshot:
+        if not self._username or not self._password:
+            raise MojVClientError("Brak danych logowania")
+        if self._helper_gateway is None:
+            raise MojVClientError("Lokalny helper logowania nie jest dostępny")
+        try:
+            payload = await self._helper_gateway.async_snapshot(
+                self._username,
+                self._password,
+            )
+        except HelperInvalidAuth as err:
+            raise MojVClientError("Nieprawidłowy login lub hasło") from err
+        except HelperUnavailable as err:
+            raise MojVClientError(
+                "Lokalny helper logowania nie jest uruchomiony"
+            ) from err
+        except HelperRequestError as err:
+            raise MojVClientError(f"Błąd lokalnego helpera logowania: {err}") from err
+
+        students: list[StudentSnapshot] = []
+        for row in payload.get("students", []):
+            if not isinstance(row, dict):
+                continue
+            students.append(
+                self._student_snapshot(
+                    student_id=str(row.get("student_id") or ""),
+                    name=str(row.get("name") or ""),
+                    class_name=str(row.get("class_name") or ""),
+                    timetable=row.get("timetable"),
+                    attendance=row.get("attendance"),
+                )
+            )
+        if not students:
+            raise MojVClientError("Nie otrzymano danych żadnego dziecka")
+        return AccountSnapshot(students=tuple(students), updated_at=dt_util.now())
 
     async def _async_login(self) -> None:
         await self.async_close()
@@ -110,7 +196,7 @@ class MojVClient:
         except MojVBrowserVerificationRequired as err:
             await self.async_close()
             raise MojVClientError(
-                "Portal wymaga weryfikacji w pełnej przeglądarce"
+                "Portal wymaga lokalnego helpera z pełną przeglądarką"
             ) from err
         except MojVInvalidAuth as err:
             await self.async_close()
@@ -155,28 +241,16 @@ class MojVClient:
             await self._async_login()
             return await self._async_fetch_live(retry_auth=False)
 
-        students: list[StudentSnapshot] = []
-        timezone = dt_util.DEFAULT_TIME_ZONE
-        for bundle in bundles:
-            lessons = parse_timetable(bundle.timetable, bundle.attendance)
-            aware_lessons = tuple(
-                replace(
-                    lesson,
-                    start=lesson.start.replace(tzinfo=timezone),
-                    end=lesson.end.replace(tzinfo=timezone),
-                )
-                for lesson in lessons
+        students = [
+            self._student_snapshot(
+                student_id=bundle.student.student_id,
+                name=bundle.student.name,
+                class_name=bundle.student.class_name,
+                timetable=bundle.timetable,
+                attendance=bundle.attendance,
             )
-            students.append(
-                StudentSnapshot(
-                    student=Student(
-                        student_id=bundle.student.student_id,
-                        name=bundle.student.name,
-                        class_name=bundle.student.class_name,
-                    ),
-                    lessons=aware_lessons,
-                )
-            )
+            for bundle in bundles
+        ]
 
         if not students:
             raise MojVClientError("Nie otrzymano danych żadnego dziecka")
