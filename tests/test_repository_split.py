@@ -12,6 +12,12 @@ def test_hacs_repository_no_longer_embeds_home_assistant_app() -> None:
     assert not (ROOT / ".github" / "workflows" / "publish-helper.yml").exists()
 
 
+def test_hacs_keeps_runtime_gateway_and_secret_protocol() -> None:
+    component = ROOT / "custom_components" / "mojv"
+    assert (component / "helper_gateway.py").is_file()
+    assert (component / "helper_protocol.py").is_file()
+
+
 def test_hacs_repository_points_to_standalone_helper_repository() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "https://github.com/gekon27/mojv-auth-helper" in readme
