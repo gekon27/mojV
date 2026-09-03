@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.0] - 2026-09-03
+
+- dodany opcjonalny lokalny **mojV Auth Helper** z Chromium dla kont wymagających pełnej przeglądarki,
+- integracja automatycznie próbuje lekkiego logowania HTTP i przełącza się na helper tylko wtedy, gdy jest to wymagane,
+- helper utrzymuje cookies i klucze sesji wyłącznie we własnym kontenerze,
+- helper nie zapisuje hasła i nie zwraca do Home Assistant cookies, tokenów ani kluczy sesji,
+- komunikacja integracja ↔ helper odbywa się wyłącznie w wewnętrznej sieci Home Assistant,
+- helper zwraca tylko dane ucznia, plan lekcji i frekwencję,
+- dodane automatyczne wykrywanie uruchomionego helpera przez Supervisor,
+- dodane czytelne komunikaty `helper_required` i `helper_failed` w Config Flow,
+- pole logowania obsługuje login, alias lub e-mail,
+- dodane testy kontraktu helpera, bramki Supervisor i filtracji sekretów,
+- dodana paczka aplikacji Home Assistant w `mojv_auth_helper/`,
+- dodana walidacja wersji README / manifest / CHANGELOG.
+
 ## [0.5.2] - 2026-09-03
 
 - poprawiony pełny flow logowania HTTP,
