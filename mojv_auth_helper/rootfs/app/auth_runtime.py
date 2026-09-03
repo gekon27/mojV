@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from typing import Any
 
 
@@ -23,6 +24,13 @@ class StudentTarget:
             "name": self.name,
             "class_name": self.class_name,
         }
+
+
+def credential_cache_key(username: str, password: str) -> str:
+    """Create a non-reversible in-memory cache key bound to both credentials."""
+    normalized_username = username.strip().lower()
+    material = f"{normalized_username}\0{password}".encode("utf-8")
+    return hashlib.sha256(material).hexdigest()
 
 
 def unwrap_context(payload: Any) -> Any:
