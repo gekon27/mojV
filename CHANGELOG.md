@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.3] - 2026-09-03
+
+- zsynchronizowana wersja integracji HACS z aktualnym helperem `0.1.4`,
+- nowy release HACS wymusza widoczną aktualizację po zmianach browser-auth,
+- helper akceptuje poprawne przekierowanie na host ucznia bez wymagania ścieżki `/App/...`,
+- zachowane timeout recovery, Xvfb, Chromium i bezpieczna diagnostyka etapów logowania,
+- README, manifest i changelog zsynchronizowane do `0.6.3`.
+
 ## [0.6.2] - 2026-09-03
 
 - poprawiony browser-auth na podstawie porównania z działającym rozwiązaniem referencyjnym bez kopiowania jego kodu,
