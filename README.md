@@ -6,11 +6,11 @@ Integracja Home Assistant skoncentrowana na planie lekcji, bieżącej/następnej
 
 ## Status
 
-**HACS 0.6.1 — LIVE + panel Szkoła + prebuilt helper przeglądarkowy.**
+**HACS 0.6.2 — LIVE + panel Szkoła + poprawiony helper przeglądarkowy 0.1.2.**
 
-Wersja 0.6.1 zachowuje obsługę **1..N dzieci**, rzeczywisty plan lekcji i frekwencję oraz poprawia instalację **mojV Auth Helper** na Home Assistant. Helper nie jest już budowany lokalnie na urządzeniu użytkownika. Home Assistant pobiera gotowy, wieloarchitekturowy obraz kontenera z GHCR.
+Wersja 0.6.2 zachowuje obsługę **1..N dzieci**, rzeczywisty plan lekcji i frekwencję oraz poprawia logowanie przez **mojV Auth Helper** na kontach zatrzymywanych przez weryfikację wymagającą pełnej przeglądarki.
 
-To usuwa zależność instalacji helpera od dostępu urządzenia Home Assistant do PyPI podczas budowania obrazu i znacząco upraszcza instalację.
+Helper 0.1.2 uruchamia Chromium w środowisku z wirtualnym ekranem Xvfb i klasycznym trybem headless, zgodnie z zachowaniem sprawdzonego rozwiązania referencyjnego. Dodano też bezpieczne etapy diagnostyczne logowania oraz lokalny zrzut ekranu po błędzie z wyczyszczonymi wartościami pól formularza.
 
 mojV zawsze najpierw próbuje lekkiego logowania bez dodatkowego kontenera. Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie przełącza się na lokalną aplikację **mojV Auth Helper** z Chromium. Użytkownik nie wybiera backendu logowania ręcznie.
 
@@ -27,15 +27,17 @@ Zasady bezpieczeństwa helpera:
 - do integracji wracają tylko dane ucznia, plan lekcji i frekwencja,
 - helper nie wystawia portu do sieci LAN,
 - komunikacja z Home Assistant odbywa się w wewnętrznej sieci systemu,
-- obraz helpera jest budowany w GitHub Actions i publikowany jako prebuilt multi-arch image dla `amd64` i `aarch64`.
+- obraz helpera jest budowany w GitHub Actions i publikowany jako prebuilt multi-arch image dla `amd64` i `aarch64`,
+- log diagnostyczny zapisuje tylko etapy logowania i bezpieczną lokalizację strony bez parametrów zapytania,
+- diagnostyczny screenshot jest lokalny i przed zapisem helper czyści wartości pól `input`.
 
-## Instalacja 0.6.1
+## Instalacja 0.6.2
 
 ### 1. Integracja HACS
 
 1. W HACS dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories, jeżeli repo nie jest jeszcze dodane.
 2. Wybierz `mojV` → **Download / Redownload / Update**.
-3. Zainstaluj wersję **0.6.1** lub nowszą.
+3. Zainstaluj wersję **0.6.2** lub nowszą.
 4. Uruchom ponownie Home Assistant.
 
 HACS instaluje integrację jako:
@@ -50,7 +52,7 @@ Jeżeli Config Flow poinformuje, że portal wymaga pełnej przeglądarki:
 2. Dodaj repozytorium `https://github.com/gekon27/mojV` do repozytoriów aplikacji, jeżeli nie jest jeszcze dodane.
 3. Odśwież App Store.
 4. Otwórz **mojV Auth Helper**.
-5. Zainstaluj helper. Home Assistant powinien pobrać gotowy obraz `ghcr.io/gekon27/mojv-auth-helper`, zamiast budować Dockerfile lokalnie.
+5. Zainstaluj lub zaktualizuj helper do wersji **0.1.2**. Home Assistant pobiera gotowy obraz `ghcr.io/gekon27/mojv-auth-helper`, zamiast budować Dockerfile lokalnie.
 6. Uruchom helper i pozostaw automatyczne uruchamianie przy starcie włączone.
 7. Wróć do **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
 8. Wybierz **Konto szkolne** i ponownie podaj login/alias/e-mail oraz hasło.
@@ -120,7 +122,7 @@ Zdarzenia można podpiąć do `notify.mobile_app_*`, głośnika, komunikatora al
 
 ## Aktualny zakres LIVE
 
-W 0.6.1 działającą podstawą LIVE pozostają:
+W 0.6.2 działającą podstawą LIVE pozostają:
 
 - automatyczne wykrywanie 1..N dzieci,
 - plan lekcji,
@@ -136,7 +138,9 @@ Jeżeli logowanie albo integracja się nie załaduje:
 
 1. Otwórz **Ustawienia → System → Dzienniki** i wyszukaj `mojv`.
 2. Jeżeli używany jest helper, otwórz **Ustawienia → Apps / Aplikacje → mojV Auth Helper → Logi**.
-3. Ponów próbę logowania i skopiuj wyłącznie odpowiednie komunikaty błędu.
+3. Ponów próbę logowania.
+4. W helperze 0.1.2 szukaj etapów `login-page`, `username-submitted`, `password-submitted`, `diary-links`, `student-app`, `context`.
+5. Przy błędzie helper może zapisać lokalny plik `/data/mojv_auth_error.png`; wartości pól formularza są czyszczone przed wykonaniem zrzutu.
 
 Nie publikuj hasła ani cookies. mojV nie powinien zapisywać tych danych do logów.
 
@@ -166,9 +170,9 @@ Od Home Assistant 2026.3 custom integrations mogą dostarczać branding lokalnie
 
 ### mojV Auth Helper
 
-- `mojv_auth_helper/Dockerfile` — obraz z Chromium i ChromeDriver budowany w CI,
+- `mojv_auth_helper/Dockerfile` — obraz z Chromium, ChromeDriver i Xvfb budowany w CI,
 - `mojv_auth_helper/config.yaml` — wskazuje gotowy obraz GHCR pobierany przez Supervisor,
-- `rootfs/app/server.py` — prywatne API helpera oraz obsługa przeglądarki,
+- `rootfs/app/server.py` — prywatne API helpera, obsługa przeglądarki i diagnostyka etapów,
 - `rootfs/app/auth_runtime.py` — parser kontekstu i filtracja danych publicznych.
 
 ## Multi-student
