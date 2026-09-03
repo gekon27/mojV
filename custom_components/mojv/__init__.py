@@ -8,6 +8,8 @@ from .client import MojVClient
 from .const import (
     CONF_DEMO_STUDENTS,
     CONF_MODE,
+    CONF_PASSWORD,
+    CONF_USERNAME,
     DEFAULT_DEMO_STUDENTS,
     DOMAIN,
     MODE_DEMO,
@@ -26,8 +28,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     client = MojVClient(
         mode=mode,
         demo_students=int(entry.data.get(CONF_DEMO_STUDENTS, DEFAULT_DEMO_STUDENTS)),
+        username=str(entry.data.get(CONF_USERNAME, "")),
+        password=str(entry.data.get(CONF_PASSWORD, "")),
     )
-    coordinator = MojVCoordinator(hass, client)
+    coordinator = MojVCoordinator(hass, client, live=mode != MODE_DEMO)
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
@@ -53,7 +57,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         notifier = hass.data.get(DATA_NOTIFIERS, {}).pop(entry.entry_id, None)
         if notifier:
             notifier.async_stop()
-        hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        coordinator = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        if coordinator:
+            await coordinator.client.async_close()
         if not hass.data.get(DOMAIN):
             async_unregister_school_panel(hass)
     return unloaded
