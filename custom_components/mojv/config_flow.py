@@ -78,7 +78,6 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_live(self, user_input=None):
         """Validate credentials and create a live account entry."""
         errors: dict[str, str] = {}
-        description_placeholders: dict[str, str] = {}
 
         if user_input is not None:
             username = str(user_input[CONF_USERNAME]).strip()
@@ -99,9 +98,6 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 await self.async_set_unique_id(f"mojv_live:{username.lower()}")
                 self._abort_if_unique_id_configured()
-                description_placeholders["students"] = ", ".join(
-                    student.name for student in students
-                )
                 return self.async_create_entry(
                     title=f"mojV — {len(students)} dzieci",
                     data={
@@ -109,7 +105,6 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_USERNAME: username,
                         CONF_PASSWORD: password,
                     },
-                    description_placeholders=description_placeholders,
                 )
             finally:
                 if not session.closed:
@@ -129,5 +124,4 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="live",
             data_schema=schema,
             errors=errors,
-            description_placeholders=description_placeholders,
         )
