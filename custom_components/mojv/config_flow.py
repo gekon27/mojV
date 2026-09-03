@@ -1,6 +1,8 @@
 """Config flow for mojV."""
 from __future__ import annotations
 
+import logging
+
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -26,6 +28,8 @@ from .const import (
     MODE_DEMO,
     MODE_LIVE,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -94,6 +98,7 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except MojVCannotConnect:
                 errors["base"] = "cannot_connect"
             except Exception:
+                _LOGGER.exception("Unexpected live-login error")
                 errors["base"] = "unknown"
             else:
                 await self.async_set_unique_id(f"mojv_live:{username.lower()}")
