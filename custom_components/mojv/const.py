@@ -12,9 +12,13 @@ CONF_MODE = "mode"
 CONF_DEMO_STUDENTS = "demo_students"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
+CONF_AUTH_BACKEND = "auth_backend"
 
 MODE_DEMO = "demo"
 MODE_LIVE = "live"
+
+AUTH_BACKEND_HTTP = "http"
+AUTH_BACKEND_HELPER = "helper"
 
 DEFAULT_DEMO_STUDENTS = 2
 MIN_DEMO_STUDENTS = 1
