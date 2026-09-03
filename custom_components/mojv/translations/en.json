@@ -1,0 +1,17 @@
+{
+  "title": "mojV",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Test mojV",
+        "description": "Demo mode creates the full entity set without logging in to eduVULCAN. Select how many students should be simulated.",
+        "data": {
+          "demo_students": "Number of students"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "The mojV demo entry is already configured."
+    }
+  }
+}
