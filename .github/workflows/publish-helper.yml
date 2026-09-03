@@ -86,3 +86,12 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: docker buildx imagetools inspect "${IMAGE}:${VERSION}"
+
+      - name: Verify anonymous pull
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker logout ghcr.io || true
+          rm -f "$HOME/.docker/config.json"
+          docker pull "${IMAGE}:${VERSION}"
