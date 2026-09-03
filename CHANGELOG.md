@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.2] - 2026-09-03
+
+- poprawiony browser-auth na podstawie porównania z działającym rozwiązaniem referencyjnym bez kopiowania jego kodu,
+- helper 0.1.2 uruchamia Chromium z wirtualnym ekranem Xvfb i klasycznym `--headless` zamiast `--headless=new`,
+- dodane kontrolowane opóźnienie pomiędzy wysłaniem loginu i etapem hasła,
+- dodane bezpieczne etapy diagnostyczne `login-page`, `username-submitted`, `password-submitted`, `diary-links`, `student-app`, `context`,
+- logowana lokalizacja strony nie zawiera query string ani danych uwierzytelniających,
+- przy błędzie helper zapisuje lokalny screenshot po wyczyszczeniu wartości pól formularza,
+- `/health` raportuje wersję helpera przekazaną podczas budowania obrazu,
+- CI sprawdza obecność Xvfb, start Chromium oraz zgodność wersji `/health`,
+- README, manifest i changelog zsynchronizowane do 0.6.2.
+
 ## [0.6.1] - 2026-09-03
 
 - helper przeglądarkowy jest publikowany jako gotowy obraz GHCR zamiast budowania lokalnie na Home Assistant,
