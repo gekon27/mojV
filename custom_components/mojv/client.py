@@ -1,7 +1,6 @@
 """Data client for mojV."""
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import timedelta
 import json
 from typing import Any
@@ -34,8 +33,8 @@ from .helper_gateway import (
     HelperUnavailable,
 )
 from .models import AccountSnapshot, Grade, Lesson, Remark, Student, StudentSnapshot
-from .parsers.timetable import parse_timetable
 from .school_api import SchoolApiClient, StudentContext
+from .snapshot_builder import build_student_snapshot
 
 
 class MojVClientError(Exception):
@@ -120,32 +119,20 @@ class MojVClient:
         class_name: str,
         timetable: Any,
         attendance: Any,
+        classification_periods: Any = None,
+        grades_by_period: dict[str, Any] | None = None,
+        schoolwork: Any = None,
     ) -> StudentSnapshot:
-        lessons = parse_timetable(timetable, attendance)
-        timezone = dt_util.DEFAULT_TIME_ZONE
-        aware_lessons = tuple(
-            replace(
-                lesson,
-                start=(
-                    lesson.start.replace(tzinfo=timezone)
-                    if lesson.start.tzinfo is None
-                    else lesson.start
-                ),
-                end=(
-                    lesson.end.replace(tzinfo=timezone)
-                    if lesson.end.tzinfo is None
-                    else lesson.end
-                ),
-            )
-            for lesson in lessons
-        )
-        return StudentSnapshot(
-            student=Student(
-                student_id=str(student_id),
-                name=str(name),
-                class_name=str(class_name),
-            ),
-            lessons=aware_lessons,
+        return build_student_snapshot(
+            student_id=student_id,
+            name=name,
+            class_name=class_name,
+            timetable=timetable,
+            attendance=attendance,
+            classification_periods=classification_periods,
+            grades_by_period=grades_by_period,
+            schoolwork=schoolwork,
+            timezone=dt_util.DEFAULT_TIME_ZONE,
         )
 
     async def _async_fetch_helper(self) -> AccountSnapshot:
@@ -178,6 +165,9 @@ class MojVClient:
                     class_name=str(row.get("class_name") or ""),
                     timetable=row.get("timetable"),
                     attendance=row.get("attendance"),
+                    classification_periods=row.get("classification_periods"),
+                    grades_by_period=row.get("grades_by_period"),
+                    schoolwork=row.get("schoolwork"),
                 )
             )
         if not students:
@@ -248,6 +238,9 @@ class MojVClient:
                 class_name=bundle.student.class_name,
                 timetable=bundle.timetable,
                 attendance=bundle.attendance,
+                classification_periods=bundle.classification_periods,
+                grades_by_period=bundle.grades_by_period,
+                schoolwork=bundle.schoolwork,
             )
             for bundle in bundles
         ]
