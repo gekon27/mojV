@@ -13,4 +13,4 @@ def test_student_redirect_accepts_tenant_host_without_app_path() -> None:
     assert "def _wait_for_student_tenant" in server
     assert 'parsed.netloc.lower() == _STUDENT_HOST' in server
     assert '"/app/" in parsed.path.lower()' not in server
-    assert "_wait_for_student_tenant(driver)" in server
+    assert "return _wait_for_student_tenant(" in server
