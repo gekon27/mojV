@@ -6,6 +6,18 @@ from datetime import datetime
 
 from .models import Lesson, StudentSnapshot
 
+_ATTENDANCE_STATES = (
+    "present",
+    "absent",
+    "excused_absence",
+    "late",
+    "excused_late",
+    "school_activity",
+    "released",
+    "not_recorded",
+    "unknown",
+)
+
 
 def active_lesson(snapshot: StudentSnapshot, now: datetime) -> Lesson | None:
     """Return the lesson active at *now*, excluding cancelled lessons."""
@@ -34,6 +46,18 @@ def lessons_today(snapshot: StudentSnapshot, now: datetime) -> tuple[Lesson, ...
             key=lambda item: item.start,
         )
     )
+
+
+def attendance_summary(snapshot: StudentSnapshot) -> dict[str, int]:
+    """Count attendance states for non-cancelled lessons in a snapshot."""
+    counts = {state: 0 for state in _ATTENDANCE_STATES}
+    known = set(_ATTENDANCE_STATES[:-1])
+    for lesson in snapshot.lessons:
+        if lesson.cancelled:
+            continue
+        state = lesson.attendance if lesson.attendance in known else "unknown"
+        counts[state] += 1
+    return counts
 
 
 def minutes_to_end(lesson: Lesson | None, now: datetime) -> int:
