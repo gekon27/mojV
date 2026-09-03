@@ -6,11 +6,11 @@ Integracja Home Assistant skoncentrowana na planie lekcji, bieżącej/następnej
 
 ## Status
 
-**HACS 0.6.2 — LIVE + panel Szkoła + poprawiony helper przeglądarkowy 0.1.2.**
+**HACS 0.6.2 — LIVE + panel Szkoła + poprawiony helper przeglądarkowy 0.1.3.**
 
 Wersja 0.6.2 zachowuje obsługę **1..N dzieci**, rzeczywisty plan lekcji i frekwencję oraz poprawia logowanie przez **mojV Auth Helper** na kontach zatrzymywanych przez weryfikację wymagającą pełnej przeglądarki.
 
-Helper 0.1.2 uruchamia Chromium w środowisku z wirtualnym ekranem Xvfb i klasycznym trybem headless, zgodnie z zachowaniem sprawdzonego rozwiązania referencyjnego. Dodano też bezpieczne etapy diagnostyczne logowania oraz lokalny zrzut ekranu po błędzie z wyczyszczonymi wartościami pól formularza.
+Helper 0.1.3 uruchamia Chromium w środowisku z wirtualnym ekranem Xvfb i klasycznym trybem headless. Dodatkowo izoluje timeouty renderera dla poszczególnych linków dziennika: jeżeli jeden link ładuje się zbyt długo, wcześniej wykryte konteksty i uczniowie nie są odrzucani, a helper próbuje zatrzymać niedokończone ładowanie przez `window.stop()` i kontynuować bez ujawniania sekretów.
 
 mojV zawsze najpierw próbuje lekkiego logowania bez dodatkowego kontenera. Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie przełącza się na lokalną aplikację **mojV Auth Helper** z Chromium. Użytkownik nie wybiera backendu logowania ręcznie.
 
@@ -52,7 +52,7 @@ Jeżeli Config Flow poinformuje, że portal wymaga pełnej przeglądarki:
 2. Dodaj repozytorium `https://github.com/gekon27/mojV` do repozytoriów aplikacji, jeżeli nie jest jeszcze dodane.
 3. Odśwież App Store.
 4. Otwórz **mojV Auth Helper**.
-5. Zainstaluj lub zaktualizuj helper do wersji **0.1.2**. Home Assistant pobiera gotowy obraz `ghcr.io/gekon27/mojv-auth-helper`, zamiast budować Dockerfile lokalnie.
+5. Zainstaluj lub zaktualizuj helper do wersji **0.1.3**. Home Assistant pobiera gotowy obraz `ghcr.io/gekon27/mojv-auth-helper`, zamiast budować Dockerfile lokalnie.
 6. Uruchom helper i pozostaw automatyczne uruchamianie przy starcie włączone.
 7. Wróć do **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
 8. Wybierz **Konto szkolne** i ponownie podaj login/alias/e-mail oraz hasło.
@@ -139,7 +139,7 @@ Jeżeli logowanie albo integracja się nie załaduje:
 1. Otwórz **Ustawienia → System → Dzienniki** i wyszukaj `mojv`.
 2. Jeżeli używany jest helper, otwórz **Ustawienia → Apps / Aplikacje → mojV Auth Helper → Logi**.
 3. Ponów próbę logowania.
-4. W helperze 0.1.2 szukaj etapów `login-page`, `username-submitted`, `password-submitted`, `diary-links`, `student-app`, `context`.
+4. W helperze 0.1.3 szukaj etapów `login-page`, `username-submitted`, `password-submitted`, `diary-links`, `student-app`, `context`, a przy wolnym linku także `diary-link-load-timeout` lub `diary-link-failed`.
 5. Przy błędzie helper może zapisać lokalny plik `/data/mojv_auth_error.png`; wartości pól formularza są czyszczone przed wykonaniem zrzutu.
 
 Nie publikuj hasła ani cookies. mojV nie powinien zapisywać tych danych do logów.

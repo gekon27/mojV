@@ -123,3 +123,14 @@ def test_helper_health_version_comes_from_image_build_version() -> None:
 
     assert 'MOJV_HELPER_VERSION' in server
     assert 'MOJV_HELPER_VERSION' in dockerfile
+
+
+def test_diary_link_renderer_timeout_is_recovered_per_link() -> None:
+    """A single slow diary link must not abort an otherwise valid login."""
+    server = SERVER.read_text(encoding="utf-8")
+
+    assert "def _open_diary_link" in server
+    assert "Auth stage=diary-link-load-timeout" in server
+    assert "window.stop()" in server
+    assert "for index, link in enumerate(links, start=1)" in server
+    assert "link_failures" in server

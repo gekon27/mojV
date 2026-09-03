@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3] - 2026-09-03
+
+- timeout renderera podczas otwierania pojedynczego linku dziennika nie przerywa już całego logowania,
+- helper próbuje zatrzymać niedokończone ładowanie przez `window.stop()` i sprawdza, czy aplikacja ucznia jest już dostępna,
+- poprawnie zachowuje wcześniej wykryte konteksty i uczniów, nawet gdy kolejny link jest wolny lub uszkodzony,
+- błędy Selenium są zamieniane na kontrolowany błąd helpera zamiast surowej odpowiedzi HTTP 500,
+- diagnostyka loguje wyłącznie indeks linku, typ błędu i bezpieczną lokalizację bez sekretów.
+
 ## [0.1.2] - 2026-09-03
 
 - uruchamianie Chromium z Xvfb i klasycznym `--headless`,
