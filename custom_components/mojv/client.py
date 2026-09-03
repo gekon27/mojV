@@ -1,8 +1,8 @@
 """Data client for mojV.
 
-The first HACS test build intentionally contains a deterministic demo backend.
-The live school-portal transport will replace only this boundary, while entities,
-multi-student handling and Home Assistant plumbing stay unchanged.
+The test build contains a deterministic demo backend. The live school-portal
+transport will replace only this boundary while the Home Assistant data model,
+panel and multi-student handling stay unchanged.
 """
 from __future__ import annotations
 
@@ -10,8 +10,13 @@ from datetime import timedelta
 
 from homeassistant.util import dt as dt_util
 
-from .const import ATTENDANCE_LATE, ATTENDANCE_PRESENT, MODE_DEMO
-from .models import AccountSnapshot, Lesson, Student, StudentSnapshot
+from .const import (
+    ATTENDANCE_ABSENT,
+    ATTENDANCE_LATE,
+    ATTENDANCE_PRESENT,
+    MODE_DEMO,
+)
+from .models import AccountSnapshot, Grade, Lesson, Remark, Student, StudentSnapshot
 
 
 class MojVClientError(Exception):
@@ -60,6 +65,13 @@ class MojVClient:
             )
             selected = subjects[index % len(subjects)]
             offset = timedelta(minutes=index * 2)
+            if index == 0:
+                current_attendance = ATTENDANCE_ABSENT
+            elif index == 1:
+                current_attendance = ATTENDANCE_LATE
+            else:
+                current_attendance = ATTENDANCE_PRESENT
+
             lessons = (
                 Lesson(
                     number=1,
@@ -68,9 +80,7 @@ class MojVClient:
                     end=anchor + timedelta(minutes=5) + offset,
                     room=str(101 + index),
                     teacher="Nauczyciel testowy",
-                    attendance=(
-                        ATTENDANCE_LATE if index == 1 else ATTENDANCE_PRESENT
-                    ),
+                    attendance=current_attendance,
                 ),
                 Lesson(
                     number=2,
@@ -94,6 +104,35 @@ class MojVClient:
                     teacher="Nauczyciel testowy",
                 ),
             )
-            students.append(StudentSnapshot(student=student, lessons=lessons))
+            grades = (
+                Grade(
+                    grade_id=f"demo-grade-{student_no}-1",
+                    subject=selected[1],
+                    value="5" if index % 2 == 0 else "4+",
+                    date=anchor - timedelta(hours=2),
+                    description="Sprawdzian — wpis testowy",
+                ),
+            )
+            remarks = (
+                Remark(
+                    remark_id=f"demo-remark-{student_no}-1",
+                    date=anchor - timedelta(hours=1),
+                    text=(
+                        "Bardzo dobre przygotowanie do zajęć."
+                        if index % 2 == 0
+                        else "Prośba o uzupełnienie zaległego zadania."
+                    ),
+                    author="Nauczyciel testowy",
+                    category="Informacja",
+                ),
+            )
+            students.append(
+                StudentSnapshot(
+                    student=student,
+                    lessons=lessons,
+                    grades=grades,
+                    remarks=remarks,
+                )
+            )
 
         return AccountSnapshot(students=tuple(students), updated_at=now)
