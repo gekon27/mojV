@@ -23,6 +23,23 @@ jobs:
         run: python -m compileall -q custom_components/mojv
       - name: Validate School panel JavaScript
         run: node --check custom_components/mojv/frontend/school-panel.js
+      - name: Check release version consistency
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          version = json.loads(
+              Path('custom_components/mojv/manifest.json').read_text(encoding='utf-8')
+          )['version']
+          readme = Path('README.md').read_text(encoding='utf-8')
+          changelog = Path('CHANGELOG.md').read_text(encoding='utf-8')
+
+          if f'HACS {version}' not in readme:
+              raise SystemExit(f'README version does not match manifest: {version}')
+          if f'## [{version}]' not in changelog:
+              raise SystemExit(f'CHANGELOG version does not match manifest: {version}')
+          PY
       - name: Check reserved naming
         run: |
           python - <<'PY'
