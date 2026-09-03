@@ -444,16 +444,27 @@ def _date_stamp(value: datetime, *, start: bool) -> str:
     return f"{value:%Y-%m-%d}T{suffix}"
 
 
+def _module_error(error: BrowserAuthError) -> str:
+    """Return a secret-free per-module diagnostic value."""
+    return type(error).__name__
+
+
 def _snapshot_browser(account: BrowserAccount) -> dict[str, Any]:
     now = datetime.now()
     date_from = now - timedelta(days=now.weekday() + 7)
     date_to = now + timedelta(days=21)
+    schoolwork_from = now.replace(day=1) - timedelta(days=1)
+    schoolwork_to = now + timedelta(days=61)
     students: list[dict[str, Any]] = []
 
     for target in account.targets:
         errors: dict[str, str] = {}
         timetable: Any = None
         attendance: Any = None
+        classification_periods: Any = None
+        grades_by_period: dict[str, Any] = {}
+        schoolwork: Any = None
+
         try:
             if account.driver.current_url != target.app_url:
                 _open_diary_link(
@@ -462,11 +473,16 @@ def _snapshot_browser(account: BrowserAccount) -> dict[str, Any]:
                     index=1,
                     total=1,
                 )
+        except BrowserAuthError as err:
+            errors["navigation"] = _module_error(err)
+
+        try:
             plan_params = urlencode(
                 {
                     "key": target.session_key,
                     "dataOd": _date_stamp(date_from, start=True),
                     "dataDo": _date_stamp(date_to, start=False),
+                    "zakresDanych": "2",
                 }
             )
             timetable = _browser_json(
@@ -474,7 +490,7 @@ def _snapshot_browser(account: BrowserAccount) -> dict[str, Any]:
                 f"https://{_STUDENT_HOST}/{target.city}/api/PlanZajec?{plan_params}",
             )
         except BrowserAuthError as err:
-            errors["timetable"] = str(err)
+            errors["timetable"] = _module_error(err)
 
         try:
             attendance_params = urlencode({"key": target.session_key})
@@ -483,13 +499,65 @@ def _snapshot_browser(account: BrowserAccount) -> dict[str, Any]:
                 f"https://{_STUDENT_HOST}/{target.city}/api/Frekwencja?{attendance_params}",
             )
         except BrowserAuthError as err:
-            errors["attendance"] = str(err)
+            errors["attendance"] = _module_error(err)
+
+        try:
+            schoolwork_params = urlencode(
+                {
+                    "key": target.session_key,
+                    "dataOd": _date_stamp(schoolwork_from, start=True),
+                    "dataDo": _date_stamp(schoolwork_to, start=False),
+                }
+            )
+            schoolwork = _browser_json(
+                account.driver,
+                f"https://{_STUDENT_HOST}/{target.city}/api/SprawdzianyZadaniaDomowe?{schoolwork_params}",
+            )
+        except BrowserAuthError as err:
+            errors["schoolwork"] = _module_error(err)
+
+        if target.journal_id:
+            try:
+                periods_params = urlencode(
+                    {
+                        "key": target.session_key,
+                        "idDziennik": target.journal_id,
+                    }
+                )
+                classification_periods = _browser_json(
+                    account.driver,
+                    f"https://{_STUDENT_HOST}/{target.city}/api/OkresyKlasyfikacyjne?{periods_params}",
+                )
+            except BrowserAuthError as err:
+                errors["classification_periods"] = _module_error(err)
+
+        if isinstance(classification_periods, list):
+            for period in classification_periods:
+                if not isinstance(period, dict) or period.get("id") is None:
+                    continue
+                period_id = str(period["id"])
+                try:
+                    grades_params = urlencode(
+                        {
+                            "key": target.session_key,
+                            "idOkresKlasyfikacyjny": period_id,
+                        }
+                    )
+                    grades_by_period[period_id] = _browser_json(
+                        account.driver,
+                        f"https://{_STUDENT_HOST}/{target.city}/api/Oceny?{grades_params}",
+                    )
+                except BrowserAuthError as err:
+                    errors[f"grades:{period_id}"] = _module_error(err)
 
         students.append(
             public_snapshot_row(
                 target,
                 timetable=timetable,
                 attendance=attendance,
+                classification_periods=classification_periods,
+                grades_by_period=grades_by_period,
+                schoolwork=schoolwork,
                 errors=errors,
             )
         )
