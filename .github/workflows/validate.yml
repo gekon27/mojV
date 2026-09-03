@@ -94,6 +94,16 @@ jobs:
             mojv_auth_helper
       - name: Start helper image
         run: docker run -d --name mojv-auth-helper-test -p 18099:8099 mojv-auth-helper:test
+      - name: Smoke-test Chromium
+        run: |
+          docker exec mojv-auth-helper-test sh -c '
+            set -e
+            BROWSER="$(command -v chromium-browser || command -v chromium)"
+            test -n "$BROWSER"
+            command -v chromedriver
+            "$BROWSER" --headless=new --no-sandbox --disable-gpu --dump-dom about:blank >/tmp/browser-smoke.html
+            test -s /tmp/browser-smoke.html
+          '
       - name: Smoke-test helper health
         run: |
           set -e
