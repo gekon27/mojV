@@ -11,9 +11,9 @@
       },
       "live": {
         "title": "Konto szkolne",
-        "description": "Podaj dane używane do logowania w portalu szkolnym. mojV sprawdzi sesję i automatycznie wykryje wszystkie dzieci przypisane do konta.",
+        "description": "Podaj login, alias lub e-mail oraz hasło używane w portalu szkolnym. mojV najpierw sprawdzi lekkie połączenie, a gdy portal wymaga pełnej przeglądarki, automatycznie użyje lokalnego helpera.",
         "data": {
-          "username": "Login / e-mail",
+          "username": "Login / alias / e-mail",
           "password": "Hasło"
         }
       },
@@ -27,7 +27,9 @@
     },
     "error": {
       "invalid_auth": "Nieprawidłowy login lub hasło.",
-      "browser_verification_required": "Portal wymaga weryfikacji w pełnej przeglądarce. Sprawdź dziennik Home Assistant; dla tego konta będzie potrzebny mały helper logowania.",
+      "browser_verification_required": "Portal szkolny wymaga pełnej przeglądarki dla tego konta.",
+      "helper_required": "Portal szkolny wymaga pełnej przeglądarki. Zainstaluj i uruchom aplikację „mojV Auth Helper” z tego samego repozytorium, a następnie spróbuj ponownie.",
+      "helper_failed": "Lokalny mojV Auth Helper działa, ale logowanie w przeglądarce nie zostało ukończone. Sprawdź log aplikacji mojV Auth Helper.",
       "no_students": "Logowanie powiodło się, ale na koncie nie znaleziono żadnego dziecka.",
       "cannot_connect": "Nie można połączyć się z portalem szkolnym.",
       "unknown": "Nieoczekiwany błąd logowania. Sprawdź dziennik Home Assistant."
