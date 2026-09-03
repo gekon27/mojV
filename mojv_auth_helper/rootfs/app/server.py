@@ -222,13 +222,16 @@ def _wait_for_diary_links(driver: webdriver.Chrome) -> list[str]:
         raise NoStudents("No diary links were found after login") from err
 
 
-def _wait_for_student_app(
+def _wait_for_student_tenant(
     driver: webdriver.Chrome,
     timeout: int = _BROWSER_TIMEOUT,
 ) -> str:
+    """Wait until SSO lands on a student tenant, regardless of final app route."""
+
     def ready(current: webdriver.Chrome):
         parsed = urlparse(current.current_url)
-        if parsed.netloc.lower() == _STUDENT_HOST and "/app/" in parsed.path.lower():
+        parts = [part for part in parsed.path.split("/") if part]
+        if parsed.netloc.lower() == _STUDENT_HOST and parts:
             return current.current_url
         return False
 
@@ -240,7 +243,7 @@ def _wait_for_student_app(
             raise BrowserVerificationFailed(
                 "Journal browser verification did not complete"
             ) from err
-        raise BrowserAuthError("Journal application did not open") from err
+        raise BrowserAuthError("Journal tenant did not open") from err
 
 
 def _open_diary_link(
@@ -250,7 +253,7 @@ def _open_diary_link(
     index: int,
     total: int,
 ) -> str:
-    """Open one student-app link and recover when Chrome waits forever for load."""
+    """Open one diary link and recover when Chrome waits forever for load."""
     load_timed_out = False
     try:
         driver.get(link)
@@ -269,7 +272,7 @@ def _open_diary_link(
     except WebDriverException as err:
         raise BrowserAuthError("Journal link navigation failed") from err
 
-    return _wait_for_student_app(
+    return _wait_for_student_tenant(
         driver,
         timeout=5 if load_timed_out else _BROWSER_TIMEOUT,
     )
@@ -387,10 +390,11 @@ def _login_browser(username: str, password: str) -> BrowserAccount:
             except BrowserAuthError as err:
                 link_failures.append(err)
                 _LOGGER.warning(
-                    "Auth stage=diary-link-failed index=%d/%d reason=%s",
+                    "Auth stage=diary-link-failed index=%d/%d reason=%s location=%s",
                     index,
                     len(links),
                     type(err).__name__,
+                    _safe_location(driver),
                 )
                 continue
 
