@@ -21,6 +21,7 @@ PANEL_ICON = "mdi:school-outline"
 PANEL_ELEMENT = "mojv-school-panel"
 PANEL_STATIC_URL = "/mojv-static"
 DATA_PANEL_REGISTERED = f"{DOMAIN}_panel_registered"
+DAY_NAMES = ("Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela")
 
 
 def _lesson_dict(lesson, now) -> dict[str, Any] | None:
@@ -39,6 +40,29 @@ def _lesson_dict(lesson, now) -> dict[str, Any] | None:
     }
 
 
+def _week_dict(snapshot, now) -> list[dict[str, Any]]:
+    current = active_lesson(snapshot, now)
+    grouped: dict[str, list] = {}
+    for lesson in sorted(snapshot.lessons, key=lambda item: item.start):
+        grouped.setdefault(lesson.start.date().isoformat(), []).append(lesson)
+
+    return [
+        {
+            "date": date_key,
+            "label": DAY_NAMES[items[0].start.weekday()],
+            "today": items[0].start.date() == now.date(),
+            "lessons": [
+                {
+                    **(_lesson_dict(lesson, now) or {}),
+                    "current": lesson == current,
+                }
+                for lesson in items
+            ],
+        }
+        for date_key, items in grouped.items()
+    ]
+
+
 def _student_dict(snapshot, now) -> dict[str, Any]:
     current = active_lesson(snapshot, now)
     upcoming = next_lesson(snapshot, now)
@@ -55,6 +79,7 @@ def _student_dict(snapshot, now) -> dict[str, Any]:
             }
             for lesson in lessons_today(snapshot, now)
         ],
+        "week": _week_dict(snapshot, now),
         "grades": [
             {
                 "id": grade.grade_id,
@@ -122,7 +147,6 @@ async def async_register_school_panel(hass: HomeAssistant) -> None:
             [StaticPathConfig(PANEL_STATIC_URL, str(frontend_path), False)]
         )
     except RuntimeError:
-        # Static routes stay registered across config-entry reloads.
         pass
 
     websocket_api.async_register_command(hass, websocket_panel_data)
