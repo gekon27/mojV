@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
+from .messages_api import MessagesApiClient
+
 
 class JsonTransport(Protocol):
     """Minimal transport required by the school API client."""
@@ -24,6 +26,8 @@ class StudentContext:
     base_url: str
     session_key: str
     journal_id: str = ""
+    city: str = ""
+    mailbox_key: str = ""
 
 
 @dataclass(slots=True)
@@ -35,10 +39,13 @@ class RawStudentBundle:
     attendance: Any = None
     attendance_subjects: Any = None
     attendance_summary: Any = None
+    attendance_by_subject: dict[str, Any] = field(default_factory=dict)
     classification_periods: Any = None
     grades_by_period: dict[str, Any] = field(default_factory=dict)
     remarks: Any = None
     schoolwork: Any = None
+    messages: Any = None
+    message_details: dict[str, Any] = field(default_factory=dict)
     achievements: Any = None
     meetings: Any = None
     lucky_number: Any = None
@@ -48,8 +55,14 @@ class RawStudentBundle:
 class SchoolApiClient:
     """Fetch independent school modules with failure isolation."""
 
-    def __init__(self, transport: JsonTransport) -> None:
+    def __init__(
+        self,
+        transport: JsonTransport,
+        *,
+        messages: MessagesApiClient | None = None,
+    ) -> None:
         self._transport = transport
+        self._messages = messages
 
     async def fetch_student(
         self,
@@ -77,6 +90,16 @@ class SchoolApiClient:
             "attendance": self._transport.get_json(
                 f"{student.base_url}/api/Frekwencja", common
             ),
+            "attendance_subjects": self._transport.get_json(
+                f"{student.base_url}/api/Przedmioty", common
+            ),
+            "attendance_summary": self._transport.get_json(
+                f"{student.base_url}/api/FrekwencjaStatystyki",
+                {**common, "idPrzedmiot": -1},
+            ),
+            "remarks": self._transport.get_json(
+                f"{student.base_url}/api/Uwagi", common
+            ),
             "schoolwork": self._transport.get_json(
                 f"{student.base_url}/api/SprawdzianyZadaniaDomowe",
                 {
@@ -84,6 +107,12 @@ class SchoolApiClient:
                     "dataOd": self._stamp(schoolwork_from, start=True),
                     "dataDo": self._stamp(schoolwork_to, start=False),
                 },
+            ),
+            "achievements": self._transport.get_json(
+                f"{student.base_url}/api/Osiagniecia", common
+            ),
+            "meetings": self._transport.get_json(
+                f"{student.base_url}/api/Zebrania", common
             ),
         }
         if student.journal_id:
@@ -100,7 +129,11 @@ class SchoolApiClient:
             else:
                 setattr(bundle, name, result)
 
-        await self._fetch_grades(student, bundle)
+        await asyncio.gather(
+            self._fetch_grades(student, bundle),
+            self._fetch_attendance_by_subject(student, bundle),
+            self._fetch_messages(student, bundle),
+        )
         return bundle
 
     async def _fetch_grades(
@@ -136,6 +169,53 @@ class SchoolApiClient:
                 bundle.errors[f"grades:{period_id}"] = self._error_text(result)
             else:
                 bundle.grades_by_period[period_id] = result
+
+    async def _fetch_attendance_by_subject(
+        self,
+        student: StudentContext,
+        bundle: RawStudentBundle,
+    ) -> None:
+        subjects = bundle.attendance_subjects
+        if not isinstance(subjects, list):
+            return
+        rows = [
+            row
+            for row in subjects
+            if isinstance(row, dict)
+            and row.get("id") is not None
+            and str(row.get("id")) != "-1"
+        ]
+        if not rows:
+            return
+        requests = tuple(
+            self._transport.get_json(
+                f"{student.base_url}/api/FrekwencjaStatystyki",
+                {"key": student.session_key, "idPrzedmiot": row["id"]},
+            )
+            for row in rows
+        )
+        results = await asyncio.gather(*requests, return_exceptions=True)
+        for row, result in zip(rows, results, strict=True):
+            subject_id = str(row["id"])
+            if isinstance(result, Exception):
+                bundle.errors[f"attendance_stats:{subject_id}"] = self._error_text(result)
+            else:
+                bundle.attendance_by_subject[subject_id] = result
+
+    async def _fetch_messages(
+        self,
+        student: StudentContext,
+        bundle: RawStudentBundle,
+    ) -> None:
+        if self._messages is None or not student.city or not student.mailbox_key:
+            return
+        try:
+            inbox, details = await self._messages.fetch(student.city, student.mailbox_key)
+        except Exception as err:  # transport-specific errors stay isolated
+            bundle.errors["messages"] = self._error_text(err)
+            return
+        bundle.messages = inbox
+        bundle.message_details = details
 
     async def fetch_many(
         self,
