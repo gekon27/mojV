@@ -51,13 +51,14 @@ def test_hub_has_badges_and_responsive_layout_without_new_ws_polling() -> None:
     assert "callWS" not in source
 
 
-def test_ci_syntax_checks_all_three_panel_modules() -> None:
+def test_ci_syntax_checks_all_panel_modules() -> None:
     workflow = (ROOT / ".github" / "workflows" / "validate.yml").read_text(
         encoding="utf-8"
     )
     for filename in (
         "school-panel.js",
         "school-panel-live.js",
+        "school-panel-hub-base.js",
         "school-panel-hub.js",
     ):
         assert f"node --check custom_components/mojv/frontend/{filename}" in workflow
