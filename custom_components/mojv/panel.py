@@ -3,7 +3,16 @@ from __future__ import annotations
 
 from typing import Any
 
+import voluptuous as vol
+
+from homeassistant.components import websocket_api
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.util import dt as dt_util
+
 from . import panel_base as _base
+from .const import DOMAIN
+from .coordinator import MojVCoordinator
+from .panel_students import select_student_rows
 
 PANEL_URL_PATH = _base.PANEL_URL_PATH
 PANEL_TITLE = _base.PANEL_TITLE
@@ -121,7 +130,50 @@ def _student_dict(
 
 _base._student_dict = _student_dict
 
-websocket_panel_data = _base.websocket_panel_data
+
+@callback
+@websocket_api.websocket_command({vol.Required("type"): "mojv/panel"})
+def websocket_panel_data(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Return one newest safe panel row for every stable student ID."""
+    now = dt_util.now()
+    candidates: list[tuple[Any, int, dict[str, Any]]] = []
+    updated_at = None
+    notifiers = hass.data.get(DATA_NOTIFIERS, {})
+    insertion_index = 0
+
+    for entry_id, coordinator in hass.data.get(DOMAIN, {}).items():
+        if not isinstance(coordinator, MojVCoordinator):
+            continue
+        notifier = notifiers.get(entry_id)
+        notification_rows = (
+            notifier.notification_rows()
+            if notifier is not None and hasattr(notifier, "notification_rows")
+            else []
+        )
+        stamp = coordinator.data.updated_at
+        for item in coordinator.data.students:
+            candidates.append(
+                (stamp, insertion_index, _student_dict(item, now, notification_rows))
+            )
+            insertion_index += 1
+        if updated_at is None or stamp > updated_at:
+            updated_at = stamp
+
+    connection.send_result(
+        msg["id"],
+        {
+            "students": select_student_rows(candidates),
+            "updated_at": updated_at.isoformat() if updated_at else None,
+            "now": now.isoformat(),
+        },
+    )
+
+
+_base.websocket_panel_data = websocket_panel_data
 async_register_school_panel = _base.async_register_school_panel
 async_unregister_school_panel = _base.async_unregister_school_panel
 
