@@ -6,7 +6,7 @@ Integracja Home Assistant dla danych szkolnych: plan lekcji, aktualna i następn
 
 ## Status
 
-**HACS 0.12.0 — LIVE + School Hub + pełnoekranowy dashboard przeglądarkowy + szczegóły po kliknięciu + Notification Engine v2 + samodzielny mojV Auth Helper 0.1.9.**
+**HACS 0.13.0 — LIVE + plan na 4 pełne tygodnie do przodu + School Hub + pełnoekranowy dashboard przeglądarkowy + szczegóły po kliknięciu + Notification Engine v2 + samodzielny mojV Auth Helper 0.1.10.**
 
 Projekt jest rozdzielony na dwa niezależne repozytoria:
 
@@ -19,16 +19,16 @@ Integracja obsługuje **1..N dzieci**. Nie zakłada stałej liczby uczniów na k
 
 mojV zawsze zaczyna od lekkiego backendu HTTP. Chromium nie jest uruchamiany, jeżeli nie jest potrzebny.
 
-Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie korzysta z lokalnej aplikacji **mojV Auth Helper 0.1.9**. Użytkownik nie wybiera backendu ręcznie.
+Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie korzysta z lokalnej aplikacji **mojV Auth Helper 0.1.10**. Użytkownik nie wybiera backendu ręcznie.
 
 **HTTP first → automatyczny helper fallback.**
 
 ## Aktualny zakres LIVE
 
-W HACS 0.12.0 obsługiwane są rzeczywiste dane:
+W HACS 0.13.0 obsługiwane są rzeczywiste dane:
 
 - automatyczne wykrywanie 1..N dzieci,
-- plan lekcji,
+- plan lekcji od poprzedniego tygodnia przez tydzień bieżący do końca czwartego pełnego tygodnia do przodu,
 - aktualna i następna lekcja,
 - numer lekcji i czas do końca,
 - sale, nauczyciele, zastępstwa i odwołane lekcje,
@@ -58,14 +58,14 @@ Każdy dodatkowy moduł jest pobierany niezależnie. Jeżeli jeden endpoint jest
 ## Instalacja HACS
 
 1. W HACS dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories.
-2. Wybierz `mojV` i zainstaluj wersję **0.12.0** lub nowszą.
+2. Wybierz `mojV` i zainstaluj wersję **0.13.0** lub nowszą.
 3. Uruchom ponownie Home Assistant.
 4. Otwórz **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
 5. Podaj dane konta szkolnego.
 
 Po poprawnym logowaniu mojV wykryje wszystkich uczniów dostępnych na koncie i utworzy osobne urządzenie Home Assistant dla każdego z nich.
 
-## mojV Auth Helper 0.1.9
+## mojV Auth Helper 0.1.10
 
 Helper jest niezależną aplikacją Home Assistant i nie znajduje się w repozytorium HACS.
 
@@ -75,19 +75,19 @@ Instaluj go tylko wtedy, gdy Config Flow poinformuje, że konto wymaga pełnej p
 2. Dodaj repozytorium `https://github.com/gekon27/mojv-auth-helper`.
 3. Odśwież App Store.
 4. Otwórz **mojV Auth Helper**.
-5. Zainstaluj wersję **0.1.9** lub nowszą.
+5. Zainstaluj wersję **0.1.10** lub nowszą.
 6. Uruchom aplikację i pozostaw automatyczny start włączony.
 7. Wróć do konfiguracji integracji mojV i ponów logowanie.
 
 Home Assistant pobiera gotowy publiczny obraz:
 
-`ghcr.io/gekon27/mojv-auth-helper:0.1.9`
+`ghcr.io/gekon27/mojv-auth-helper:0.1.10`
 
-Obraz `0.1.9` jest publikowany jako manifest multi-arch dla `linux/amd64` i `linux/arm64` (`aarch64`). Pipeline publikacji zweryfikował oba obrazy, manifest platform oraz anonimowy pull bez poświadczeń GHCR.
+Obraz `0.1.10` jest publikowany jako manifest multi-arch dla `linux/amd64` i `linux/arm64` (`aarch64`). Pipeline publikacji weryfikuje oba obrazy, manifest platform oraz anonimowy pull bez poświadczeń GHCR.
 
 ## School Hub — panel boczny „Szkoła”
 
-Panel korzysta wyłącznie z publicznego snapshotu zapisanego w Home Assistant. Zmiana dziecka, widoku lub tygodnia nie powoduje dodatkowego logowania do portalu.
+Panel korzysta wyłącznie z publicznego snapshotu zapisanego w Home Assistant. Zmiana dziecka, widoku lub tygodnia nie powoduje dodatkowego logowania do portalu. HACS 0.13.0 pozwala lokalnie przeglądać poprzedni tydzień, tydzień bieżący i cztery pełne tygodnie do przodu bez dodatkowego requestu przy zmianie tygodnia.
 
 Od HACS 0.12.0 backend panelu deduplikuje uczniów po stabilnym `student_id`. Jeżeli ten sam uczeń występuje w więcej niż jednym aktywnym wpisie konfiguracji, do interfejsu trafia tylko najświeższy snapshot i nie pojawiają się podwójne przyciski dziecka.
 
@@ -117,7 +117,7 @@ Dostępne są m.in.:
 
 - **Pulpit** — agregat najważniejszych informacji,
 - **Dzisiaj** — aktualna/następna lekcja, plan dnia, obecność i alerty,
-- **Plan** — tydzień, wspólne sloty godzinowe, bieżąca linia czasu, zastępstwa i anulowania; lekcja bieżąca, odbyta, przyszła i odwołana mają osobne stany wizualne i tekstowe znaczniki,
+- **Plan** — tydzień, wspólne sloty godzinowe, bieżąca linia czasu, zastępstwa i anulowania; lekcja bieżąca, odbyta, przyszła i odwołana mają osobne stany wizualne i tekstowe znaczniki; nawigacja obejmuje poprzedni tydzień oraz cztery pełne tygodnie do przodu,
 - **Frekwencja** — podsumowanie stanów i ostatnie wpisy,
 - **Oceny** — oceny cząstkowe i klasyfikacyjne,
 - **Terminarz** — nadchodzące i ostatnie sprawdziany/zadania; lista pokazuje skrót opisu, a kliknięcie otwiera pełną treść,
@@ -251,20 +251,22 @@ Historia przechowuje maksymalnie 200 najnowszych, deduplikowanych rekordów na w
 - niezależne moduły są pobierane oddzielnie i z izolacją błędów,
 - requesty są wykonywane współbieżnie tam, gdzie jest to bezpieczne,
 - jeden `snapshot_builder` normalizuje dane niezależnie od backendu logowania,
-- frontend nie odpytuje portalu przy lokalnym przełączaniu widoków,
+- pełny plan na sześciotygodniowy zakres cache (poprzedni + bieżący + 4 przyszłe tygodnie) nadal jest pobierany jednym requestem `PlanZajec` na ucznia podczas pełnego odświeżenia,
+- adaptacyjne odświeżanie LIVE ustawia następny pełny refresh około 2 min po najbliższym końcu lekcji, a poza taką granicą nie czeka dłużej niż 60 minut,
+- frontend nie odpytuje portalu przy lokalnym przełączaniu widoków lub tygodni planu,
 - dashboard przeglądarkowy reuse’uje ten sam komponent i payload zamiast uruchamiać drugi poller,
 - minutowy ticker powiadomień ocenia wyłącznie dane znajdujące się już w pamięci,
 - Chromium pozostaje poza procesem Home Assistant Core.
 
 ## Diagnostyka
 
-Przy starcie integracji HACS 0.12.0 w logu powinien pojawić się wpis:
+Przy starcie integracji HACS 0.13.0 w logu powinien pojawić się wpis:
 
-`mojV integration version=0.12.0`
+`mojV integration version=0.13.0`
 
 W logach helpera:
 
-`mojV Auth Helper version=0.1.9`
+`mojV Auth Helper version=0.1.10`
 
 Endpoint `/health` helpera raportuje status i wersję wewnątrz kontenera.
 
@@ -282,6 +284,7 @@ Nie publikuj loginu, hasła, cookies, tokenów, kluczy sesji ani kluczy routingu
 - `parsers/` — normalizacja danych,
 - `snapshot_builder.py` — wspólny snapshot,
 - `models.py` — model danych,
+- `refresh_policy.py` — adaptacyjna polityka pełnego odświeżania LIVE,
 - `sensor.py`, `binary_sensor.py`, `calendar.py` — powierzchnia encji HA,
 - `notification_rules.py`, `notification_history.py`, `notifications.py` — Notification Engine v2,
 - `config_flow.py` — logowanie oraz Options Flow,
@@ -291,7 +294,7 @@ Nie publikuj loginu, hasła, cookies, tokenów, kluczy sesji ani kluczy routingu
 - `frontend/school-panel-live.js` — widoki rozszerzonych modułów,
 - `frontend/school-panel-hub-base.js` + `frontend/school-panel-hub.js` — School Hub, Pulpit, Aktywność, Powiadomienia, Informacje i Tematy,
 - `frontend/school-panel-details.js` — bezpieczne preview i dialogi pełnej treści,
-- `frontend/school-panel-lesson-states.js` — klasyfikacja i wizualizacja stanów lekcji,
+- `frontend/school-panel-lesson-states.js` — klasyfikacja i wizualizacja stanów lekcji oraz nawigacja po rozszerzonym horyzoncie planu,
 - `frontend/school-dashboard.js` — pełnoekranowy wrapper przeglądarkowy reuse’ujący School Hub.
 
 ### `gekon27/mojv-auth-helper` — Home Assistant App

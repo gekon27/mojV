@@ -7,6 +7,7 @@ if (proto && !proto.__mojvLessonStatesPatched) {
   proto.__mojvLessonStatesPatched = true;
 
   const baseStyles = proto._styles;
+  const baseRenderSchedule = proto._renderSchedule;
 
   proto._mojvLessonState = function (lesson, now = new Date()) {
     if (lesson?.cancelled) return "cancelled";
@@ -43,6 +44,21 @@ if (proto && !proto.__mojvLessonStatesPatched) {
     const [text, cls, mark] = this._attendance(lesson.attendance);
     const state = this._mojvLessonState(lesson, new Date());
     return `<div class="schedule-lesson lesson-state-${state}" data-lesson-state="${state}" data-cancelled="${lesson.cancelled ? "true" : "false"}" data-start="${this._e(lesson.start)}" data-end="${this._e(lesson.end)}"><div class="schedule-lesson-top"><span class="lesson-number">${this._e(lesson.number)}</span><strong>${this._e(lesson.subject)}</strong><span class="attendance-mini ${cls}" title="${this._e(text)}">${this._e(mark)}</span></div><div class="schedule-lesson-meta">${this._e(lesson.room || "bez sali")}${lesson.teacher ? ` · ${this._e(lesson.teacher)}` : ""}</div><div class="badge-row"><span class="lesson-state-badge-slot">${this._mojvLessonStateBadge(state)}</span>${lesson.replacement ? `<span class="badge warn">Zastępstwo</span>` : ""}</div></div>`;
+  };
+
+  proto._renderSchedule = function (student) {
+    const html = baseRenderSchedule.call(this, student);
+    const nextDisabled = this._weekOffset >= 4 ? "disabled" : "";
+    return html.replace(
+      /<button type="button" class="week-button" data-week="1"(?: disabled)?>›<\/button>/,
+      `<button type="button" class="week-button" data-week="1" ${nextDisabled}>›</button>`,
+    );
+  };
+
+  proto._changeWeek = function (delta) {
+    if (delta === 0) this._weekOffset = 0;
+    else this._weekOffset = Math.max(-1, Math.min(4, this._weekOffset + delta));
+    if (this._activeView === "schedule") this._renderActiveView();
   };
 
   proto._updateScheduleCurrentClasses = function () {

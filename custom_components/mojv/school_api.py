@@ -80,8 +80,9 @@ class SchoolApiClient:
     ) -> RawStudentBundle:
         bundle = RawStudentBundle(student=student)
         common = {"key": student.session_key}
-        timetable_from = now - timedelta(days=now.weekday() + 7)
-        timetable_to = now + timedelta(days=21)
+        week_start = now - timedelta(days=now.weekday())
+        timetable_from = week_start - timedelta(weeks=1)
+        timetable_to = week_start + timedelta(weeks=5, days=-1)
         schoolwork_from = now.replace(day=1) - timedelta(days=1)
         schoolwork_to = now + timedelta(days=61)
         excuses_from = now - timedelta(days=35)
