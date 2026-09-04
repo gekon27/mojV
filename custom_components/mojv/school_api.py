@@ -308,8 +308,6 @@ class SchoolApiClient:
             work_id = row.get("id")
             if work_id is None:
                 continue
-            if str(row.get("opis") or row.get("tresc") or "").strip():
-                continue
             try:
                 type_id = int(row.get("typ") or 0)
             except (TypeError, ValueError):
