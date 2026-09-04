@@ -11,7 +11,7 @@
       },
       "live": {
         "title": "School account",
-        "description": "Enter the login or alias and password used by the school portal. mojV first tries the lightweight connection and automatically uses the local browser helper when full-browser verification is required.",
+        "description": "Enter the login, alias or e-mail and password used by the school portal. mojV first tries the lightweight connection and automatically uses the local browser helper when full-browser verification is required.",
         "data": {
           "username": "Login / alias / e-mail",
           "password": "Password"
@@ -28,7 +28,7 @@
     "error": {
       "invalid_auth": "Invalid login or password.",
       "browser_verification_required": "The school portal requires a full browser for this account.",
-      "helper_required": "The school portal requires a full browser. Install and start the 'mojV Auth Helper' Home Assistant app from the same repository, then try again.",
+      "helper_required": "The school portal requires a full browser. Install and start the 'mojV Auth Helper' Home Assistant app from the gekon27/mojv-auth-helper repository, then try again.",
       "helper_failed": "The local mojV Auth Helper is running, but browser login did not complete. Check the mojV Auth Helper app log.",
       "no_students": "Login succeeded, but no student was found on this account.",
       "cannot_connect": "Could not connect to the school portal.",
@@ -36,6 +36,56 @@
     },
     "abort": {
       "already_configured": "This mojV account is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Notifications",
+        "description": "Choose mojV alerts and optional push notification entities. Home Assistant persistent notifications and mojV events work independently from push delivery.",
+        "data": {
+          "notification_types": "Notification types",
+          "notify_targets": "Notification devices / entities",
+          "lesson_end_minutes": "Reminder before lesson ends (minutes)",
+          "schoolwork_lead_hours": "Reminder before schoolwork or test deadline (hours)",
+          "meeting_lead_hours": "Reminder before meeting (hours)",
+          "quiet_hours_enabled": "Mute push during quiet hours",
+          "quiet_hours_start": "Quiet hours start",
+          "quiet_hours_end": "Quiet hours end"
+        },
+        "data_description": {
+          "notification_types": "Disabling a type prevents new alerts of that kind in all mojV delivery channels.",
+          "notify_targets": "Optional notify entities. Leave empty to use persistent notifications and Home Assistant events only.",
+          "lesson_end_minutes": "A local one-minute mojV timer checks this threshold without fetching school data again.",
+          "schoolwork_lead_hours": "0 means no advance window before the schoolwork timestamp.",
+          "meeting_lead_hours": "0 means no advance window before the meeting timestamp.",
+          "quiet_hours_enabled": "Quiet hours suppress push only. History, persistent notifications and events are still recorded.",
+          "quiet_hours_start": "24-hour HH:MM format, for example 22:00.",
+          "quiet_hours_end": "24-hour HH:MM format, for example 07:00."
+        }
+      }
+    }
+  },
+  "selector": {
+    "notification_types": {
+      "options": {
+        "grade": "New grade",
+        "final_grade": "Proposed or final grade changed",
+        "remark": "New remark",
+        "praise": "New praise",
+        "message": "New message",
+        "absence": "Absence",
+        "late": "Late attendance",
+        "lesson_cancelled": "Lesson cancelled",
+        "lesson_replacement": "Lesson replacement",
+        "lesson_changed": "Lesson time, room or teacher changed",
+        "lesson_ending": "Lesson ending soon",
+        "schoolwork_new": "New test, quiz or schoolwork",
+        "schoolwork_due": "Schoolwork deadline approaching",
+        "meeting_new": "New meeting",
+        "meeting_due": "Meeting approaching",
+        "achievement": "New achievement"
+      }
     }
   }
 }
