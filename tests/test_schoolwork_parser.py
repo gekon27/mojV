@@ -82,6 +82,57 @@ def test_parse_schoolwork_maps_types_dates_and_plain_text() -> None:
     assert rows[2].title == "Inne"
 
 
+def test_parse_schoolwork_preserves_teacher_created_and_due_dates_from_details() -> None:
+    parser = _parser()
+    payload = [
+        {
+            "id": 12,
+            "typ": 4,
+            "data": "2026-09-05T18:00:00+02:00",
+            "przedmiotNazwa": "Matematyka",
+        },
+        {
+            "id": 13,
+            "typ": 1,
+            "data": "2026-09-11T09:00:00+02:00",
+            "przedmiotNazwa": "Historia",
+        },
+    ]
+    details = {
+        "12": {
+            "typ": 4,
+            "data": "2026-09-03T14:30:00+02:00",
+            "terminOdpowiedzi": "2026-09-05T18:00:00+02:00",
+            "nauczycielImieNazwisko": "Anna Nowak",
+            "opis": "Zrób zadania 1–5.",
+        },
+        "13": {
+            "typ": 1,
+            "data": "2026-09-11T09:00:00+02:00",
+            "nauczycielImieNazwisko": "Jan Kowalski",
+            "opis": "Rozdziały 3 i 4.",
+        },
+    }
+
+    rows = parser.parse_schoolwork(payload, details)
+    by_id = {row.work_id: row for row in rows}
+
+    homework = by_id["12"]
+    assert homework.teacher == "Anna Nowak"
+    assert homework.created_at is not None
+    assert homework.created_at.isoformat() == "2026-09-03T14:30:00+02:00"
+    assert homework.due_at is not None
+    assert homework.due_at.isoformat() == "2026-09-05T18:00:00+02:00"
+    assert homework.date == homework.due_at
+
+    exam = by_id["13"]
+    assert exam.teacher == "Jan Kowalski"
+    assert exam.created_at is None
+    assert exam.due_at is not None
+    assert exam.due_at.isoformat() == "2026-09-11T09:00:00+02:00"
+    assert exam.date == exam.due_at
+
+
 def test_parse_schoolwork_accepts_envelope_and_skips_invalid_records() -> None:
     parser = _parser()
     payload = {

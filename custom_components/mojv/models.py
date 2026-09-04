@@ -77,6 +77,9 @@ class SchoolWork:
     title: str
     kind: str = "other"
     description: str = ""
+    teacher: str = ""
+    created_at: datetime | None = None
+    due_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)

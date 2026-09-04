@@ -6,7 +6,7 @@ Integracja Home Assistant dla danych szkolnych: plan lekcji, aktualna i następn
 
 ## Status
 
-**HACS 0.13.0 — LIVE + plan na 4 pełne tygodnie do przodu + School Hub + pełnoekranowy dashboard przeglądarkowy + szczegóły po kliknięciu + Notification Engine v2 + samodzielny mojV Auth Helper 0.1.10.**
+**HACS 0.14.0 — LIVE + plan na 4 tygodnie łącznie (-1 / bieżący / +1 / +2) + School Hub + pełnoekranowy dashboard przeglądarkowy + pełny Terminarz + Notification Engine v2 + samodzielny mojV Auth Helper 0.1.11.**
 
 Projekt jest rozdzielony na dwa niezależne repozytoria:
 
@@ -19,16 +19,16 @@ Integracja obsługuje **1..N dzieci**. Nie zakłada stałej liczby uczniów na k
 
 mojV zawsze zaczyna od lekkiego backendu HTTP. Chromium nie jest uruchamiany, jeżeli nie jest potrzebny.
 
-Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie korzysta z lokalnej aplikacji **mojV Auth Helper 0.1.10**. Użytkownik nie wybiera backendu ręcznie.
+Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie korzysta z lokalnej aplikacji **mojV Auth Helper 0.1.11**. Użytkownik nie wybiera backendu ręcznie.
 
 **HTTP first → automatyczny helper fallback.**
 
 ## Aktualny zakres LIVE
 
-W HACS 0.13.0 obsługiwane są rzeczywiste dane:
+W HACS 0.14.0 obsługiwane są rzeczywiste dane:
 
 - automatyczne wykrywanie 1..N dzieci,
-- plan lekcji od poprzedniego tygodnia przez tydzień bieżący do końca czwartego pełnego tygodnia do przodu,
+- plan lekcji na dokładnie cztery tygodnie łącznie: poprzedni tydzień, tydzień bieżący oraz dwa kolejne tygodnie,
 - aktualna i następna lekcja,
 - numer lekcji i czas do końca,
 - sale, nauczyciele, zastępstwa i odwołane lekcje,
@@ -37,7 +37,7 @@ W HACS 0.13.0 obsługiwane są rzeczywiste dane:
 - usprawiedliwienia,
 - oceny cząstkowe wraz z wagą, gdy backend ją zwraca,
 - oceny proponowane i okresowe/końcowe,
-- terminarz: sprawdziany, kartkówki, klasówki i zadania domowe wraz z pełną bezpieczną treścią, gdy źródło ją zwraca,
+- terminarz: sprawdziany, kartkówki, klasówki i zadania domowe wraz z pełną bezpieczną treścią, przedmiotem, nauczycielem, datą wpisu gdy portal ją rozróżnia oraz terminem wykonania/wydarzenia,
 - uwagi i pochwały,
 - wiadomości wraz z treścią szczegółową,
 - osiągnięcia,
@@ -58,14 +58,14 @@ Każdy dodatkowy moduł jest pobierany niezależnie. Jeżeli jeden endpoint jest
 ## Instalacja HACS
 
 1. W HACS dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories.
-2. Wybierz `mojV` i zainstaluj wersję **0.13.0** lub nowszą.
+2. Wybierz `mojV` i zainstaluj wersję **0.14.0** lub nowszą.
 3. Uruchom ponownie Home Assistant.
 4. Otwórz **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
 5. Podaj dane konta szkolnego.
 
 Po poprawnym logowaniu mojV wykryje wszystkich uczniów dostępnych na koncie i utworzy osobne urządzenie Home Assistant dla każdego z nich.
 
-## mojV Auth Helper 0.1.10
+## mojV Auth Helper 0.1.11
 
 Helper jest niezależną aplikacją Home Assistant i nie znajduje się w repozytorium HACS.
 
@@ -75,19 +75,19 @@ Instaluj go tylko wtedy, gdy Config Flow poinformuje, że konto wymaga pełnej p
 2. Dodaj repozytorium `https://github.com/gekon27/mojv-auth-helper`.
 3. Odśwież App Store.
 4. Otwórz **mojV Auth Helper**.
-5. Zainstaluj wersję **0.1.10** lub nowszą.
+5. Zainstaluj wersję **0.1.11** lub nowszą.
 6. Uruchom aplikację i pozostaw automatyczny start włączony.
 7. Wróć do konfiguracji integracji mojV i ponów logowanie.
 
 Home Assistant pobiera gotowy publiczny obraz:
 
-`ghcr.io/gekon27/mojv-auth-helper:0.1.10`
+`ghcr.io/gekon27/mojv-auth-helper:0.1.11`
 
-Obraz `0.1.10` jest publikowany jako manifest multi-arch dla `linux/amd64` i `linux/arm64` (`aarch64`). Pipeline publikacji weryfikuje oba obrazy, manifest platform oraz anonimowy pull bez poświadczeń GHCR.
+Obraz `0.1.11` jest publikowany jako manifest multi-arch dla `linux/amd64` i `linux/arm64` (`aarch64`). Pipeline publikacji weryfikuje oba obrazy, manifest platform oraz anonimowy pull bez poświadczeń GHCR.
 
 ## School Hub — panel boczny „Szkoła”
 
-Panel korzysta wyłącznie z publicznego snapshotu zapisanego w Home Assistant. Zmiana dziecka, widoku lub tygodnia nie powoduje dodatkowego logowania do portalu. HACS 0.13.0 pozwala lokalnie przeglądać poprzedni tydzień, tydzień bieżący i cztery pełne tygodnie do przodu bez dodatkowego requestu przy zmianie tygodnia.
+Panel korzysta wyłącznie z publicznego snapshotu zapisanego w Home Assistant. Zmiana dziecka, widoku lub tygodnia nie powoduje dodatkowego logowania do portalu. HACS 0.14.0 pozwala lokalnie przeglądać dokładnie cztery tygodnie: poprzedni, bieżący oraz dwa kolejne, bez dodatkowego requestu przy zmianie tygodnia.
 
 Od HACS 0.12.0 backend panelu deduplikuje uczniów po stabilnym `student_id`. Jeżeli ten sam uczeń występuje w więcej niż jednym aktywnym wpisie konfiguracji, do interfejsu trafia tylko najświeższy snapshot i nie pojawiają się podwójne przyciski dziecka.
 
@@ -117,28 +117,31 @@ Dostępne są m.in.:
 
 - **Pulpit** — agregat najważniejszych informacji,
 - **Dzisiaj** — aktualna/następna lekcja, plan dnia, obecność i alerty,
-- **Plan** — tydzień, wspólne sloty godzinowe, bieżąca linia czasu, zastępstwa i anulowania; lekcja bieżąca, odbyta, przyszła i odwołana mają osobne stany wizualne i tekstowe znaczniki; nawigacja obejmuje poprzedni tydzień oraz cztery pełne tygodnie do przodu,
+- **Plan** — tydzień, wspólne sloty godzinowe, bieżąca linia czasu, zastępstwa i anulowania; lekcja bieżąca, odbyta, przyszła i odwołana mają osobne stany wizualne i tekstowe znaczniki; w przerwie panel pokazuje jawny stan **Przerwa** z następną lekcją; nawigacja obejmuje `-1 / bieżący / +1 / +2`,
 - **Frekwencja** — podsumowanie stanów i ostatnie wpisy,
-- **Oceny** — oceny cząstkowe i klasyfikacyjne,
-- **Terminarz** — nadchodzące i ostatnie sprawdziany/zadania; lista pokazuje skrót opisu, a kliknięcie otwiera pełną treść,
+- **Oceny** — stała zakładka z ocenami cząstkowymi i klasyfikacyjnymi; nie znika, gdy lista ocen jest pusta,
+- **Terminarz** — sprawdziany, kartkówki, klasówki i zadania domowe; każdy wpis pokazuje typ, przedmiot, nauczyciela, datę utworzenia gdy portal ją zwraca, termin oraz podgląd opisu, a kliknięcie otwiera pełną treść,
 - **Uwagi** — uwagi i pochwały,
-- **Wiadomości** — odebrane wiadomości i ich treść,
+- **Wiadomości** — stała zakładka; przy pustej skrzynce pokazuje neutralny stan **Brak wiadomości** zamiast znikać,
 - **Statystyki** — frekwencja ogólna i per przedmiot,
 - **Osiągnięcia** — wyróżnienia i wyniki,
 - **Zebrania** — spotkania, miejsce, opis i bezpieczne linki online,
-- **Informacje** — szkoła, wychowawcy, nauczyciele, dni wolne, usprawiedliwienia i bieżące informacje,
-- **Tematy** — zrealizowane tematy lekcji,
+- **Tematy** — zrealizowane tematy lekcji z przełączanym sortowaniem daty: najnowsze/najstarsze,
+- **Informacje** — ostatnia zakładka danych szkolnych po Tematach; szkoła, wychowawcy, nauczyciele, dni wolne, usprawiedliwienia i bieżące informacje,
 - **Aktywność** — jedna chronologiczna oś najważniejszych zdarzeń,
 - **Powiadomienia** — lokalna historia Notification Engine v2.
 
-Zakładki danych dodatkowych są dynamiczne i zależą od rzeczywiście dostępnych danych. Układ jest responsywny dla desktopu, tabletu i telefonu.
+Zakładki **Oceny** i **Wiadomości** pozostają widoczne również przy pustych danych. Pozostałe dodatkowe widoki mogą zależeć od danych rzeczywiście udostępnianych przez szkołę. Układ jest responsywny dla desktopu, tabletu i telefonu.
+
+Widoki **Plan**, **Frekwencja** i **Statystyki** udostępniają akcje drukowania. Druk korzysta z dedykowanego `@media print`, aby ukryć elementy nawigacyjne i zachować czytelną zawartość.
 
 ### Szczegóły po kliknięciu
 
-W HACS 0.12.0 Terminarz, zadania domowe, sprawdziany/kartkówki oraz wpisy „Ważne dzisiaj” korzystają ze wspólnego widoku szczegółów:
+W HACS 0.14.0 Terminarz, zadania domowe, sprawdziany/kartkówki oraz wpisy „Ważne dzisiaj” korzystają ze wspólnego widoku szczegółów:
 
-- na liście widoczny jest krótki, bezpiecznie escapowany podgląd,
-- kliknięcie lub aktywacja klawiaturą otwiera dialog z pełną treścią dostępną LIVE,
+- na liście Terminarza widoczny jest typ, przedmiot, nauczyciel, data utworzenia gdy źródło ją rozróżnia, termin i bezpiecznie escapowany podgląd opisu,
+- kliknięcie lub aktywacja klawiaturą otwiera dialog z tym samym zestawem metadanych oraz pełną treścią dostępną LIVE,
+- brak pola, którego portal nie udostępnia, jest jawnie prezentowany jako **Brak danych z portalu** zamiast uzupełniania heurystyką,
 - `Esc`, przycisk zamknięcia lub kliknięcie tła zamyka dialog,
 - fokus wraca do elementu, który otworzył szczegóły,
 - na telefonie dialog działa jak pełnoszeroki bottom sheet,
@@ -200,7 +203,7 @@ Binary sensory obejmują:
 Dostępne są trzy kalendarze:
 
 - plan lekcji,
-- sprawdziany / zadania,
+- sprawdziany / zadania — event zawiera również bezpieczne metadane nauczyciela, daty wpisu/terminu i opis, gdy są dostępne,
 - zebrania.
 
 Dodatkowo istnieje wspólny sensor liczby wykrytych uczniów.
@@ -242,6 +245,7 @@ Historia przechowuje maksymalnie 200 najnowszych, deduplikowanych rekordów na w
 - Core rekurencyjnie odrzuca niedozwolone pola uwierzytelniające/routingu w payloadzie helpera,
 - panel, dashboard, encje i historia powiadomień dostają wyłącznie publiczne dane potrzebne do działania,
 - pełne treści są whitelistowane i renderowane jako bezpieczny tekst; surowy zdalny HTML nie trafia bezpośrednio do DOM,
+- szczegóły Terminarza eksportują wyłącznie pola wyświetleniowe potrzebne użytkownikowi; odpowiedzi ucznia, jego załączniki oraz pola auth/session/mailbox/routing nie są przekazywane do panelu,
 - HACS 0.12.0 nie eksportuje wrażliwego profilu ucznia ani zdjęcia,
 - dashboard przeglądarkowy korzysta ze standardowego uwierzytelniania Home Assistant i nie wprowadza osobnego magazynu poświadczeń,
 - awaria pojedynczego modułu danych lub pojedynczego targetu push nie zatrzymuje pozostałych modułów/odbiorców.
@@ -251,7 +255,8 @@ Historia przechowuje maksymalnie 200 najnowszych, deduplikowanych rekordów na w
 - niezależne moduły są pobierane oddzielnie i z izolacją błędów,
 - requesty są wykonywane współbieżnie tam, gdzie jest to bezpieczne,
 - jeden `snapshot_builder` normalizuje dane niezależnie od backendu logowania,
-- pełny plan na sześciotygodniowy zakres cache (poprzedni + bieżący + 4 przyszłe tygodnie) nadal jest pobierany jednym requestem `PlanZajec` na ucznia podczas pełnego odświeżenia,
+- plan na dokładnie cztery tygodnie łącznie (poprzedni + bieżący + 2 przyszłe) jest pobierany jednym requestem `PlanZajec` na ucznia podczas pełnego odświeżenia,
+- szczegóły obsługiwanych zadań/sprawdzianów są pobierane z dedykowanych endpointów, aby lista/preview nie zastępowały pełnego opisu,
 - adaptacyjne odświeżanie LIVE ustawia następny pełny refresh około 2 min po najbliższym końcu lekcji, a poza taką granicą nie czeka dłużej niż 60 minut,
 - frontend nie odpytuje portalu przy lokalnym przełączaniu widoków lub tygodni planu,
 - dashboard przeglądarkowy reuse’uje ten sam komponent i payload zamiast uruchamiać drugi poller,
@@ -260,13 +265,13 @@ Historia przechowuje maksymalnie 200 najnowszych, deduplikowanych rekordów na w
 
 ## Diagnostyka
 
-Przy starcie integracji HACS 0.13.0 w logu powinien pojawić się wpis:
+Przy starcie integracji HACS 0.14.0 w logu powinien pojawić się wpis:
 
-`mojV integration version=0.13.0`
+`mojV integration version=0.14.0`
 
 W logach helpera:
 
-`mojV Auth Helper version=0.1.10`
+`mojV Auth Helper version=0.1.11`
 
 Endpoint `/health` helpera raportuje status i wersję wewnątrz kontenera.
 
@@ -279,7 +284,7 @@ Nie publikuj loginu, hasła, cookies, tokenów, kluczy sesji ani kluczy routingu
 - `auth.py` — lekki flow logowania i wykrywanie potrzeby browser fallback,
 - `helper_gateway.py` — komunikacja z helperem,
 - `helper_protocol.py` — walidacja kontraktu i granicy sekretów,
-- `school_api.py` — modułowe zapytania LIVE,
+- `school_api.py` — modułowe zapytania LIVE i wzbogacanie wpisów Terminarza szczegółami,
 - `messages_api.py` — transport wiadomości,
 - `parsers/` — normalizacja danych,
 - `snapshot_builder.py` — wspólny snapshot,
@@ -293,8 +298,8 @@ Nie publikuj loginu, hasła, cookies, tokenów, kluczy sesji ani kluczy routingu
 - `frontend/school-panel.js` — bazowy panel,
 - `frontend/school-panel-live.js` — widoki rozszerzonych modułów,
 - `frontend/school-panel-hub-base.js` + `frontend/school-panel-hub.js` — School Hub, Pulpit, Aktywność, Powiadomienia, Informacje i Tematy,
-- `frontend/school-panel-details.js` — bezpieczne preview i dialogi pełnej treści,
-- `frontend/school-panel-lesson-states.js` — klasyfikacja i wizualizacja stanów lekcji oraz nawigacja po rozszerzonym horyzoncie planu,
+- `frontend/school-panel-details.js` — bezpieczne preview, metadane Terminarza i dialogi pełnej treści,
+- `frontend/school-panel-lesson-states.js` — klasyfikacja i wizualizacja stanów lekcji oraz nawigacja po czterotygodniowym horyzoncie planu,
 - `frontend/school-dashboard.js` — pełnoekranowy wrapper przeglądarkowy reuse’ujący School Hub.
 
 ### `gekon27/mojv-auth-helper` — Home Assistant App

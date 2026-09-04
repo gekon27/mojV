@@ -115,18 +115,30 @@ def parse_schoolwork(
             type_id = 0
         kind, fallback_title = _KIND_MAP.get(type_id, ("other", "Inne"))
 
-        due_raw = (
-            detail.get("terminOdpowiedzi")
-            or item.get("terminOdpowiedzi")
+        explicit_due_raw = detail.get("terminOdpowiedzi") or item.get("terminOdpowiedzi")
+        due_at = _parse_date(
+            explicit_due_raw
             or detail.get("data")
             or item.get("data")
         )
-        date = _parse_date(due_raw)
-        if date is None:
+        if due_at is None:
             continue
+
+        # Plus homework details expose ``data`` separately from
+        # ``terminOdpowiedzi``. SchoolApiClient and the browser helper may
+        # merge the detail into the list row before this parser runs, so the
+        # entry timestamp can legitimately live in either mapping.
+        created_at = None
+        if type_id == 4 and explicit_due_raw:
+            created_at = _parse_date(detail.get("data") or item.get("data"))
 
         subject = str(
             detail.get("przedmiotNazwa") or item.get("przedmiotNazwa") or ""
+        ).strip()
+        teacher = str(
+            detail.get("nauczycielImieNazwisko")
+            or item.get("nauczycielImieNazwisko")
+            or ""
         ).strip()
         title = str(
             detail.get("temat")
@@ -146,11 +158,14 @@ def parse_schoolwork(
         result.append(
             SchoolWork(
                 work_id=work_id,
-                date=date,
+                date=due_at,
                 subject=subject,
                 title=title or fallback_title,
                 kind=kind,
                 description=description,
+                teacher=teacher,
+                created_at=created_at,
+                due_at=due_at,
             )
         )
 
