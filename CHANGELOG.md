@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.13.0] - 2026-09-04
+
+- rozszerzono zakres planu lekcji w bezpośrednim HTTP do poprzedniego tygodnia, tygodnia bieżącego oraz czterech pełnych tygodni do przodu,
+- ten sam zakres dat wdrożono w samodzielnym mojV Auth Helper 0.1.10, dzięki czemu HTTP-first i Chromium fallback zachowują parity,
+- Plan w School Hub i `/mojv-dashboard` pozwala lokalnie przechodzić od poprzedniego tygodnia do czwartego przyszłego tygodnia bez dodatkowego requestu do portalu przy zmianie tygodnia,
+- rozszerzony horyzont nadal korzysta z pojedynczego requestu `PlanZajec` na ucznia podczas pełnego odświeżenia,
+- zachowano adaptacyjne odświeżanie LIVE z 0.12.0: pełny refresh około 2 min po najbliższym końcu lekcji oraz maksymalnie co 60 min poza taką granicą,
+- dodano testy RED→GREEN dla dokładnego zakresu dat requestu, nawigacji do `+4` oraz parity browser fallback,
+- funkcjonalny Core przechodzi 135 testów, 7 kontroli składni JavaScript, Hassfest i HACS,
+- granica bezpieczeństwa nie została zmieniona; szerszy plan nie dodaje nowych danych uwierzytelniających ani routingu do publicznego snapshotu.
+
 ## [0.12.0] - 2026-09-04
 
 - naprawiono podwójne wpisy uczniów w School Hub: backend deduplikuje publiczne wiersze po stabilnym `student_id`, zachowuje deterministyczną kolejność i wybiera najświeższy snapshot bez ślepego łączenia pól z dwóch wpisów konfiguracji,
