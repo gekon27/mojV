@@ -17,9 +17,9 @@ Reference code is GPL-3.0 and is not copied. mojV uses independently written tra
 
 ## Order
 
-1. RED parser/API/auth/message contracts.
-2. GREEN pure parsers and model extensions.
-3. GREEN concurrent direct HTTP fetch with per-module failure isolation.
+1. RED parser/API/auth/message contracts — observed in CI.
+2. GREEN pure parsers and model extensions — first implementation committed.
+3. GREEN concurrent direct HTTP fetch with per-module failure isolation — first implementation committed.
 4. Extend snapshot builder, client and panel serialization.
 5. Extend standalone browser helper to the same snapshot contract and publish 0.1.8 multi-arch.
 6. Add dynamic panel views only for data actually returned.
