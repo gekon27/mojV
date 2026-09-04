@@ -1,7 +1,7 @@
 """Calendar platform for mojV."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
@@ -22,10 +22,17 @@ async def async_setup_entry(
 ) -> None:
     """Set up mojV calendars."""
     coordinator: MojVCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        MojVSchoolCalendar(coordinator, item.student.student_id)
-        for item in coordinator.data.students
-    )
+    entities: list[CalendarEntity] = []
+    for item in coordinator.data.students:
+        student_id = item.student.student_id
+        entities.extend(
+            (
+                MojVSchoolCalendar(coordinator, student_id),
+                MojVSchoolworkCalendar(coordinator, student_id),
+                MojVMeetingsCalendar(coordinator, student_id),
+            )
+        )
+    async_add_entities(entities)
 
 
 class MojVSchoolCalendar(MojVStudentEntity, CalendarEntity):
@@ -72,4 +79,99 @@ class MojVSchoolCalendar(MojVStudentEntity, CalendarEntity):
             self._event_from_lesson(lesson)
             for lesson in self.student_snapshot.lessons
             if lesson.end >= start_date and lesson.start <= end_date
+        ]
+
+
+class MojVSchoolworkCalendar(MojVStudentEntity, CalendarEntity):
+    """Tests, quizzes, homework and other dated school work."""
+
+    _attr_name = "Terminarz szkolny"
+    _attr_icon = "mdi:clipboard-text-clock-outline"
+
+    def __init__(self, coordinator: MojVCoordinator, student_id: str) -> None:
+        super().__init__(coordinator, student_id)
+        self._attr_unique_id = f"{student_id}_schoolwork_calendar"
+
+    @staticmethod
+    def _event_from_item(item) -> CalendarEvent:
+        summary = item.title or item.kind or "Termin szkolny"
+        details = [f"Przedmiot: {item.subject}"] if item.subject else []
+        if item.description:
+            details.append(item.description)
+        return CalendarEvent(
+            summary=summary,
+            start=item.date,
+            end=item.date + timedelta(hours=1),
+            description="\n".join(details) or None,
+        )
+
+    @property
+    def event(self) -> CalendarEvent | None:
+        now = dt_util.now()
+        day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        rows = sorted(
+            (item for item in self.student_snapshot.schoolwork if item.date >= day_start),
+            key=lambda item: item.date,
+        )
+        return self._event_from_item(rows[0]) if rows else None
+
+    async def async_get_events(
+        self,
+        hass: HomeAssistant,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[CalendarEvent]:
+        """Return schoolwork within the requested calendar range."""
+        return [
+            self._event_from_item(item)
+            for item in self.student_snapshot.schoolwork
+            if start_date <= item.date <= end_date
+        ]
+
+
+class MojVMeetingsCalendar(MojVStudentEntity, CalendarEntity):
+    """Parent meetings and consultations."""
+
+    _attr_name = "Zebrania i konsultacje"
+    _attr_icon = "mdi:account-group-outline"
+
+    def __init__(self, coordinator: MojVCoordinator, student_id: str) -> None:
+        super().__init__(coordinator, student_id)
+        self._attr_unique_id = f"{student_id}_meetings_calendar"
+
+    @staticmethod
+    def _event_from_item(item) -> CalendarEvent:
+        details = []
+        if item.description:
+            details.append(item.description)
+        if item.online_url:
+            details.append(f"Online: {item.online_url}")
+        return CalendarEvent(
+            summary=item.title or "Zebranie",
+            start=item.start,
+            end=item.start + timedelta(hours=1),
+            description="\n".join(details) or None,
+            location=item.location or None,
+        )
+
+    @property
+    def event(self) -> CalendarEvent | None:
+        now = dt_util.now()
+        rows = sorted(
+            (item for item in self.student_snapshot.meetings if item.start >= now),
+            key=lambda item: item.start,
+        )
+        return self._event_from_item(rows[0]) if rows else None
+
+    async def async_get_events(
+        self,
+        hass: HomeAssistant,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[CalendarEvent]:
+        """Return meetings within the requested calendar range."""
+        return [
+            self._event_from_item(item)
+            for item in self.student_snapshot.meetings
+            if start_date <= item.start <= end_date
         ]

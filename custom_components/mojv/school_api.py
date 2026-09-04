@@ -50,6 +50,13 @@ class RawStudentBundle:
     achievements: Any = None
     meetings: Any = None
     lucky_number: Any = None
+    free_days: Any = None
+    excuses: Any = None
+    teachers: Any = None
+    school_info: Any = None
+    important_today: Any = None
+    homeroom_teachers: Any = None
+    completed_lessons: Any = None
     errors: dict[str, str] = field(default_factory=dict)
 
 
@@ -77,6 +84,12 @@ class SchoolApiClient:
         timetable_to = now + timedelta(days=21)
         schoolwork_from = now.replace(day=1) - timedelta(days=1)
         schoolwork_to = now + timedelta(days=61)
+        excuses_from = now - timedelta(days=35)
+        excuses_to = now + timedelta(days=7)
+        completed_from = now - timedelta(days=35)
+        completed_to = now
+        free_days_from = now - timedelta(days=30)
+        free_days_to = now + timedelta(days=365)
 
         requests: dict[str, Any] = {
             "timetable": self._transport.get_json(
@@ -112,6 +125,46 @@ class SchoolApiClient:
             ),
             "meetings": self._transport.get_json(
                 f"{student.base_url}/api/Zebrania", common
+            ),
+            "lucky_number": self._transport.get_json(
+                f"{student.base_url}/api/SzczesliwyNumerTablica", common
+            ),
+            "free_days": self._transport.get_json(
+                f"{student.base_url}/api/DniWolne",
+                {
+                    **common,
+                    "dataOd": self._stamp(free_days_from, start=True),
+                    "dataDo": self._stamp(free_days_to, start=False),
+                },
+            ),
+            "excuses": self._transport.get_json(
+                f"{student.base_url}/api/Usprawiedliwienia",
+                {
+                    **common,
+                    "dataOd": self._stamp(excuses_from, start=True),
+                    "dataDo": self._stamp(excuses_to, start=False),
+                },
+            ),
+            "teachers": self._transport.get_json(
+                f"{student.base_url}/api/Nauczyciele", common
+            ),
+            "school_info": self._transport.get_json(
+                f"{student.base_url}/api/Informacje", common
+            ),
+            "important_today": self._transport.get_json(
+                f"{student.base_url}/api/WazneDzisiajTablica", common
+            ),
+            "homeroom_teachers": self._transport.get_json(
+                f"{student.base_url}/api/WychowawcyTablica", common
+            ),
+            "completed_lessons": self._transport.get_json(
+                f"{student.base_url}/api/RealizacjaZajec",
+                {
+                    **common,
+                    "status": 1,
+                    "dataOd": self._stamp(completed_from, start=True),
+                    "dataDo": self._stamp(completed_to, start=False),
+                },
             ),
         }
         if student.journal_id:
