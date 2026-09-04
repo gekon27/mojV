@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.10.0] - 2026-09-04
+
+- przebudowano panel boczny **Szkoła** do pełnego **School Hub** z domyślnym widokiem **Pulpit**,
+- Pulpit agreguje aktualną/następną lekcję, czas do końca, obecność, liczbę wiadomości, ostatnią ocenę wraz z wagą, frekwencję, najbliższy termin i zebranie, ostatnią uwagę/pochwałę, osiągnięcie i synchronizację,
+- dodano widok **Aktywność** łączący w jednej osi oceny, klasyfikację, uwagi/pochwały, wiadomości, terminarz, zebrania, osiągnięcia i frekwencję,
+- dodano widok **Powiadomienia** z lokalną historią maksymalnie 200 deduplikowanych alertów per wpis konfiguracji,
+- dodano badge dla nieprzeczytanych wiadomości, nadchodzących terminów/zebrań i historii alertów,
+- frontend 0.10.0 jest trzecią cienką warstwą `school-panel-hub.js`; nie wprowadza osobnego pollera ani dodatkowego logowania,
+- dodano **Notification Engine v2** z czystymi regułami w `notification_rules.py`, historią w `notification_history.py` i transportem HA w `notifications.py`,
+- wykrywane są: nowe oceny, zmiany ocen proponowanych/końcowych, uwagi, pochwały, wiadomości, nieobecności, spóźnienia, odwołania, zastępstwa, zmiany sali/godziny/nauczyciela, nowe terminy, zebrania i osiągnięcia,
+- dodano przypomnienia czasowe: koniec lekcji, zbliżający się sprawdzian/zadanie oraz zebranie,
+- przypomnienia czasowe korzystają z lokalnego tickera co 1 minutę i nie powodują requestu ani ponownego logowania do portalu,
+- pierwsza synchronizacja prawdziwego konta tworzy baseline i nie generuje lawiny historycznych alertów,
+- każdy alert ma stabilny `event_id`; historia trwale blokuje duplikaty po odświeżeniu i restarcie,
+- dodano wspólny event `mojv_notification`, zachowując kompatybilne eventy `mojv_lesson_late`, `mojv_lesson_absent`, `mojv_new_grade` i `mojv_new_remark`,
+- persistent notifications i event bus działają niezależnie od opcjonalnego push,
+- dodano Options Flow z wyborem 16 typów alertów, konkretnych encji `notify`, progów 5 min / 24 h / 24 h oraz godzin ciszy,
+- godziny ciszy wyciszają tylko push; historia, persistent notification i event bus nadal rejestrują alert,
+- awaria pojedynczego targetu push jest izolowana i nie blokuje pozostałych odbiorców,
+- dodano polskie i angielskie tłumaczenia Options Flow i nazw typów powiadomień,
+- historia, panel i eventy nie zawierają cookies, tokenów, mailbox/session keys ani surowych identyfikatorów routingu,
+- „szczęśliwy numerek” nie jest prezentowany, dopóki rzeczywiste źródło LIVE nie zostanie osobno potwierdzone i przetestowane,
+- CI sprawdza `school-panel.js`, `school-panel-live.js` i `school-panel-hub.js`, testy Python, Hassfest i HACS,
+- README, manifest i changelog zsynchronizowane do `0.10.0`; helper pozostaje w wersji `0.1.8`.
+
 ## [0.9.0] - 2026-09-04
 
 - dodano rzeczywiste moduły LIVE: uwagi/pochwały, wiadomości, osiągnięcia i zebrania,
