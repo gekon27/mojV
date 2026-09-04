@@ -4,10 +4,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PANEL = ROOT / "custom_components" / "mojv" / "panel.py"
+PANEL_BASE = ROOT / "custom_components" / "mojv" / "panel_base.py"
+
+
+def _panel_source() -> str:
+    return PANEL_BASE.read_text(encoding="utf-8") + "\n" + PANEL.read_text(encoding="utf-8")
 
 
 def test_panel_exposes_dashboard_activity_and_notification_history() -> None:
-    source = PANEL.read_text(encoding="utf-8")
+    source = _panel_source()
     assert "def _dashboard_dict" in source
     assert "def _activity_rows" in source
     assert '"dashboard": _dashboard_dict' in source
@@ -17,7 +22,7 @@ def test_panel_exposes_dashboard_activity_and_notification_history() -> None:
 
 
 def test_dashboard_contains_all_available_summary_slots() -> None:
-    source = PANEL.read_text(encoding="utf-8")
+    source = _panel_source()
     for key in (
         "unread_messages",
         "latest_grade",
@@ -31,7 +36,7 @@ def test_dashboard_contains_all_available_summary_slots() -> None:
 
 
 def test_activity_combines_live_modules_without_secrets() -> None:
-    source = PANEL.read_text(encoding="utf-8")
+    source = _panel_source()
     for kind in (
         '"grade"',
         '"remark"',
