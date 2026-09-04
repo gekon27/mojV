@@ -10,12 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 MOJV = ROOT / "custom_components" / "mojv"
 FRONTEND = MOJV / "frontend"
 API_MODULE = MOJV / "school_api.py"
-PANEL_JS = FRONTEND / "school-panel.js"
-LIVE_JS = FRONTEND / "school-panel-live.js"
 HUB_JS = FRONTEND / "school-panel-hub.js"
 LESSON_STATES_JS = FRONTEND / "school-panel-lesson-states.js"
 DETAILS_JS = FRONTEND / "school-panel-details.js"
-CLIENT = MOJV / "client.py"
 
 
 def _load_api():
@@ -101,31 +98,29 @@ def test_plan_has_explicit_break_state_and_strong_finished_lesson_state() -> Non
 
 
 def test_grades_and_messages_tabs_are_always_visible_even_when_empty() -> None:
-    panel = PANEL_JS.read_text(encoding="utf-8")
-    live = LIVE_JS.read_text(encoding="utf-8")
-
-    assert 'views.push(["grades", "Oceny", "5"]);' in panel
-    assert 'if ((student?.grades || []).length || (student?.final_grades || []).length)' not in panel
-    assert 'views.push(["messages", "Wiadomości", "✉"]);' in live
-    assert 'if ((student?.messages || []).length)' not in live
-    assert "Brak wiadomości" in live
+    hub = HUB_JS.read_text(encoding="utf-8")
+    assert "_mojvEnsureView" in hub
+    assert '["grades", "Oceny", "5"]' in hub
+    assert '["messages", "Wiadomości", "✉"]' in hub
+    assert "Brak wiadomości" in hub
 
 
 def test_topics_can_be_sorted_by_date_and_information_is_last_after_topics() -> None:
     hub = HUB_JS.read_text(encoding="utf-8")
     assert "data-topics-sort" in hub
     assert "_topicsSortDirection" in hub
-    assert "localeCompare" not in hub.split("_renderCompletedTopics", 1)[1].split("proto._styles", 1)[0]
+    assert "new Date(a.date)" in hub
+    assert "new Date(b.date)" in hub
 
-    topics_push = hub.index('views.push(["topics", "Tematy", "≡"])')
-    info_push = hub.index('views.push(["info", "Informacje", "ⓘ"])')
+    topics_push = hub.index('["topics", "Tematy", "≡"]')
+    info_push = hub.index('["info", "Informacje", "ⓘ"]')
     assert topics_push < info_push
 
 
 def test_plan_and_statistics_have_print_actions_with_print_css() -> None:
     sources = "\n".join(
         path.read_text(encoding="utf-8")
-        for path in (HUB_JS, LIVE_JS, LESSON_STATES_JS)
+        for path in (HUB_JS, LESSON_STATES_JS)
     )
     assert "window.print()" in sources
     assert "data-mojv-print" in sources
@@ -134,7 +129,7 @@ def test_plan_and_statistics_have_print_actions_with_print_css() -> None:
     assert "Drukuj statystyki" in sources
 
 
-def test_schoolwork_details_are_fetched_for_homework_and_tests() -> None:
+def test_schoolwork_details_are_merged_into_homework_and_test_rows() -> None:
     api_mod = _load_api()
     transport = FakeTransport()
     client = api_mod.SchoolApiClient(transport)
@@ -148,21 +143,14 @@ def test_schoolwork_details_are_fetched_for_homework_and_tests() -> None:
 
     bundle = asyncio.run(client.fetch_student(student, now=datetime(2026, 9, 4, 12, tzinfo=timezone.utc)))
 
-    assert bundle.schoolwork_details["101"]["opis"] == "Zrób zadania 1-5 ze strony 42."
-    assert bundle.schoolwork_details["102"]["opis"] == "Rozdziały 3 i 4."
+    rows = {str(row["id"]): row for row in bundle.schoolwork}
+    assert rows["101"]["opis"] == "Zrób zadania 1-5 ze strony 42."
+    assert rows["102"]["opis"] == "Rozdziały 3 i 4."
 
     homework_call = next(call for call in transport.calls if call[0].endswith("/api/ZadanieDomoweSzczegoly"))
     exam_call = next(call for call in transport.calls if call[0].endswith("/api/SprawdzianSzczegoly"))
     assert homework_call[1] == {"key": "SECRET", "id": 101}
     assert exam_call[1] == {"key": "SECRET", "id": 102}
-
-
-def test_client_passes_schoolwork_details_through_direct_and_helper_paths() -> None:
-    source = CLIENT.read_text(encoding="utf-8")
-    assert "schoolwork_details: dict[str, Any] | None = None" in source
-    assert "schoolwork_details=schoolwork_details" in source
-    assert 'schoolwork_details=row.get("schoolwork_details")' in source
-    assert "schoolwork_details=bundle.schoolwork_details" in source
 
 
 def test_term_calendar_uses_full_description_in_detail_overlay() -> None:
