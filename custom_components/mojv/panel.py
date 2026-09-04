@@ -5,7 +5,7 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.components import websocket_api
+from homeassistant.components import frontend, panel_custom, websocket_api
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.util import dt as dt_util
 
@@ -22,6 +22,12 @@ PANEL_STATIC_URL = _base.PANEL_STATIC_URL
 DATA_PANEL_REGISTERED = _base.DATA_PANEL_REGISTERED
 DATA_NOTIFIERS = _base.DATA_NOTIFIERS
 DAY_NAMES = _base.DAY_NAMES
+
+DASHBOARD_URL_PATH = "mojv-dashboard"
+DASHBOARD_ELEMENT = "mojv-school-dashboard"
+DASHBOARD_TITLE = "Dashboard szkoły"
+DASHBOARD_ICON = "mdi:view-dashboard-outline"
+DATA_DASHBOARD_REGISTERED = f"{DOMAIN}_dashboard_registered"
 
 _BASE_STUDENT_DICT = _base._student_dict
 
@@ -175,10 +181,39 @@ def websocket_panel_data(
 
 
 _base.websocket_panel_data = websocket_panel_data
-async_register_school_panel = _base.async_register_school_panel
-async_unregister_school_panel = _base.async_unregister_school_panel
+
+
+async def async_register_school_panel(hass: HomeAssistant) -> None:
+    """Register the regular School Hub and authenticated browser dashboard."""
+    await _base.async_register_school_panel(hass)
+    if hass.data.get(DATA_DASHBOARD_REGISTERED):
+        return
+
+    await panel_custom.async_register_panel(
+        hass,
+        webcomponent_name=DASHBOARD_ELEMENT,
+        frontend_url_path=DASHBOARD_URL_PATH,
+        module_url=f"{PANEL_STATIC_URL}/school-dashboard.js",
+        sidebar_title=DASHBOARD_TITLE,
+        sidebar_icon=DASHBOARD_ICON,
+        require_admin=False,
+        config={"title": DASHBOARD_TITLE, "full_screen": True},
+    )
+    hass.data[DATA_DASHBOARD_REGISTERED] = True
+
+
+def async_unregister_school_panel(hass: HomeAssistant) -> None:
+    """Remove both mojV panel surfaces when the last entry unloads."""
+    if hass.data.get(DATA_DASHBOARD_REGISTERED):
+        frontend.async_remove_panel(hass, DASHBOARD_URL_PATH)
+        hass.data[DATA_DASHBOARD_REGISTERED] = False
+    _base.async_unregister_school_panel(hass)
+
 
 __all__ = [
+    "DASHBOARD_ELEMENT",
+    "DASHBOARD_TITLE",
+    "DASHBOARD_URL_PATH",
     "DATA_NOTIFIERS",
     "PANEL_ELEMENT",
     "PANEL_ICON",
