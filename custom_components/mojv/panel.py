@@ -40,6 +40,15 @@ def _free_day_dict(item: Any) -> dict[str, Any]:
     }
 
 
+def _schoolwork_metadata(item: Any) -> dict[str, Any]:
+    """Return only safe display metadata for one term-calendar entry."""
+    return {
+        "teacher": item.teacher,
+        "created_at": item.created_at.isoformat() if item.created_at else None,
+        "due_at": item.due_at.isoformat() if item.due_at else None,
+    }
+
+
 def _student_dict(
     snapshot: Any,
     now: Any,
@@ -47,6 +56,15 @@ def _student_dict(
 ) -> dict[str, Any]:
     """Add expanded, intentionally safe school modules to the existing payload."""
     row = _BASE_STUDENT_DICT(snapshot, now, notification_rows)
+
+    schoolwork_by_id = {
+        str(item.work_id): item
+        for item in snapshot.schoolwork
+    }
+    for public_item in row.get("schoolwork", []):
+        item = schoolwork_by_id.get(str(public_item.get("id") or ""))
+        if item is not None:
+            public_item.update(_schoolwork_metadata(item))
 
     lucky = snapshot.lucky_number
     row["lucky_number"] = (
@@ -126,6 +144,13 @@ def _student_dict(
         else None
     )
     dashboard = dict(row.get("dashboard") or {})
+    next_schoolwork = dashboard.get("next_schoolwork")
+    if isinstance(next_schoolwork, dict):
+        item = schoolwork_by_id.get(str(next_schoolwork.get("id") or ""))
+        if item is not None:
+            next_schoolwork = dict(next_schoolwork)
+            next_schoolwork.update(_schoolwork_metadata(item))
+            dashboard["next_schoolwork"] = next_schoolwork
     dashboard["lucky_number"] = row["lucky_number"]
     dashboard["important_today"] = row["important_today"]
     dashboard["next_free_day"] = (
