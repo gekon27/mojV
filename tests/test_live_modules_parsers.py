@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import sys
 import types
@@ -56,7 +57,7 @@ def test_parse_remarks_preserves_real_metadata_and_skips_invalid_rows() -> None:
     assert rows[1].kind == "information"
 
 
-def test_parse_messages_joins_inbox_with_real_message_details() -> None:
+def test_parse_messages_joins_details_without_exposing_routing_key() -> None:
     parser = _load("parsers.messages", PARSERS_DIR / "messages.py")
     rows = parser.parse_messages(
         [
@@ -72,11 +73,23 @@ def test_parse_messages_joins_inbox_with_real_message_details() -> None:
         {"m1": {"tresc": "<p>Treść <b>wiadomości</b></p>"}},
     )
     assert len(rows) == 1
-    assert rows[0].message_id == "m1"
+    assert rows[0].message_id == hashlib.sha256(b"m1").hexdigest()[:24]
+    assert rows[0].message_id != "m1"
     assert rows[0].sender == "Sekretariat"
     assert rows[0].subject == "Wycieczka"
     assert rows[0].body == "Treść wiadomości"
     assert rows[0].unread is True
+
+
+def test_parse_messages_keeps_already_public_helper_id() -> None:
+    parser = _load("parsers.messages", PARSERS_DIR / "messages.py")
+    rows = parser.parse_messages(
+        [{"id": "public-hash", "data": "2026-09-03T09:20:00", "temat": "Info"}],
+        {"public-hash": {"tresc": "Treść"}},
+    )
+    assert len(rows) == 1
+    assert rows[0].message_id == "public-hash"
+    assert rows[0].body == "Treść"
 
 
 def test_parse_attendance_stats_returns_global_and_per_subject_counts() -> None:

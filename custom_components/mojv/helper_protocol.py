@@ -5,10 +5,13 @@ from typing import Any
 
 HELPER_SLUG_SUFFIX = "mojv_auth_helper"
 _FORBIDDEN_SECRET_FIELDS = {
+    "apiglobalkey",
     "cookie",
     "cookies",
     "diary_id",
+    "globalkeyskrzynka",
     "journal_id",
+    "mailbox_key",
     "password",
     "session_key",
     "token",
@@ -46,7 +49,7 @@ def select_helper_slug(payload: Any) -> str | None:
 
 
 def _contains_secret_field(value: Any) -> bool:
-    """Detect forbidden authentication fields anywhere in a helper payload."""
+    """Detect forbidden authentication/routing fields anywhere in a helper payload."""
     if isinstance(value, dict):
         for key, child in value.items():
             if str(key).lower() in _FORBIDDEN_SECRET_FIELDS:

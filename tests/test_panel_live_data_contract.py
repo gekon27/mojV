@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PANEL = ROOT / "custom_components" / "mojv" / "panel.py"
 FRONTEND = ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js"
+FRONTEND_LIVE = ROOT / "custom_components" / "mojv" / "frontend" / "school-panel-live.js"
 
 
 def test_panel_payload_exposes_all_live_modules() -> None:
@@ -27,10 +28,11 @@ def test_panel_payload_exposes_all_live_modules() -> None:
     assert '"body": message.body' in source
     assert '"unread": message.unread' in source
     assert '"percentage": stat.percentage' in source
+    assert "school-panel-live.js" in source
 
 
 def test_frontend_has_dynamic_live_module_views() -> None:
-    source = FRONTEND.read_text(encoding="utf-8")
+    source = FRONTEND.read_text(encoding="utf-8") + FRONTEND_LIVE.read_text(encoding="utf-8")
 
     for view in (
         "grades",
@@ -52,7 +54,7 @@ def test_frontend_has_dynamic_live_module_views() -> None:
 
 
 def test_empty_live_modules_do_not_force_empty_tabs() -> None:
-    source = FRONTEND.read_text(encoding="utf-8")
+    source = FRONTEND_LIVE.read_text(encoding="utf-8")
 
     assert 'if ((student?.messages || []).length)' in source
     assert 'if ((student?.attendance_stats || []).length)' in source
