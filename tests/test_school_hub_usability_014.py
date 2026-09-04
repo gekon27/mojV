@@ -129,6 +129,15 @@ def test_plan_and_statistics_have_print_actions_with_print_css() -> None:
     assert "Drukuj statystyki" in sources
 
 
+def test_dedicated_statistics_view_has_its_own_print_action() -> None:
+    hub = HUB_JS.read_text(encoding="utf-8")
+    assert "baseRenderAttendanceStats" in hub
+    assert "proto._renderAttendanceStats" in hub
+    attendance_stats_block = hub.split("proto._renderAttendanceStats", 1)[1].split("proto._renderActiveView", 1)[0]
+    assert 'data-mojv-print="statistics"' in attendance_stats_block
+    assert "Drukuj statystyki" in attendance_stats_block
+
+
 def test_schoolwork_details_are_merged_into_homework_and_test_rows() -> None:
     api_mod = _load_api()
     transport = FakeTransport()
