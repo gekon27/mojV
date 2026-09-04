@@ -3,8 +3,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from .const import LIVE_POST_LESSON_DELAY, LIVE_UPDATE_INTERVAL
 from .models import AccountSnapshot
+
+LIVE_IDLE_REFRESH_INTERVAL = timedelta(hours=1)
+LIVE_POST_LESSON_DELAY = timedelta(minutes=2)
 
 
 def next_live_refresh_delay(snapshot: AccountSnapshot, now: datetime) -> timedelta:
@@ -15,7 +17,7 @@ def next_live_refresh_delay(snapshot: AccountSnapshot, now: datetime) -> timedel
     messages and plan changes can be picked up without polling aggressively.
     For multi-student accounts the earliest lesson boundary wins.
     """
-    delay = LIVE_UPDATE_INTERVAL
+    delay = LIVE_IDLE_REFRESH_INTERVAL
 
     for student_snapshot in snapshot.students:
         for lesson in student_snapshot.lessons:
