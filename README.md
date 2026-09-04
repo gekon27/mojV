@@ -6,7 +6,7 @@ Integracja Home Assistant dla danych szkolnych: plan lekcji, aktualna i następn
 
 ## Status
 
-**HACS 0.11.0 — LIVE + rozszerzony School Hub + Notification Engine v2 + samodzielny mojV Auth Helper 0.1.9.**
+**HACS 0.12.0 — LIVE + School Hub + pełnoekranowy dashboard przeglądarkowy + szczegóły po kliknięciu + Notification Engine v2 + samodzielny mojV Auth Helper 0.1.9.**
 
 Projekt jest rozdzielony na dwa niezależne repozytoria:
 
@@ -25,7 +25,7 @@ Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie korzysta z
 
 ## Aktualny zakres LIVE
 
-W HACS 0.11.0 obsługiwane są rzeczywiste dane:
+W HACS 0.12.0 obsługiwane są rzeczywiste dane:
 
 - automatyczne wykrywanie 1..N dzieci,
 - plan lekcji,
@@ -37,7 +37,7 @@ W HACS 0.11.0 obsługiwane są rzeczywiste dane:
 - usprawiedliwienia,
 - oceny cząstkowe wraz z wagą, gdy backend ją zwraca,
 - oceny proponowane i okresowe/końcowe,
-- terminarz: sprawdziany, kartkówki, klasówki i zadania domowe,
+- terminarz: sprawdziany, kartkówki, klasówki i zadania domowe wraz z pełną bezpieczną treścią, gdy źródło ją zwraca,
 - uwagi i pochwały,
 - wiadomości wraz z treścią szczegółową,
 - osiągnięcia,
@@ -47,17 +47,18 @@ W HACS 0.11.0 obsługiwane są rzeczywiste dane:
 - lista nauczycieli,
 - wychowawcy,
 - szczęśliwy numerek,
-- ważne dzisiaj,
+- ważne dzisiaj wraz z opisem, gdy jest dostępny,
 - zrealizowane tematy lekcji,
 - alerty i zdarzenia Home Assistant,
-- panel boczny **Szkoła / School Hub**.
+- panel boczny **Szkoła / School Hub**,
+- pełnoekranowy, uwierzytelniony dashboard Home Assistant pod `/mojv-dashboard`.
 
 Każdy dodatkowy moduł jest pobierany niezależnie. Jeżeli jeden endpoint jest chwilowo niedostępny, pozostałe moduły nadal mogą się zaktualizować. mojV nie tworzy fikcyjnych rekordów zastępczych.
 
 ## Instalacja HACS
 
 1. W HACS dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories.
-2. Wybierz `mojV` i zainstaluj wersję **0.11.0** lub nowszą.
+2. Wybierz `mojV` i zainstaluj wersję **0.12.0** lub nowszą.
 3. Uruchom ponownie Home Assistant.
 4. Otwórz **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
 5. Podaj dane konta szkolnego.
@@ -88,6 +89,8 @@ Obraz `0.1.9` jest publikowany jako manifest multi-arch dla `linux/amd64` i `lin
 
 Panel korzysta wyłącznie z publicznego snapshotu zapisanego w Home Assistant. Zmiana dziecka, widoku lub tygodnia nie powoduje dodatkowego logowania do portalu.
 
+Od HACS 0.12.0 backend panelu deduplikuje uczniów po stabilnym `student_id`. Jeżeli ten sam uczeń występuje w więcej niż jednym aktywnym wpisie konfiguracji, do interfejsu trafia tylko najświeższy snapshot i nie pojawiają się podwójne przyciski dziecka.
+
 ### Pulpit
 
 Pulpit zbiera najważniejsze dane ucznia w jednym miejscu:
@@ -114,10 +117,10 @@ Dostępne są m.in.:
 
 - **Pulpit** — agregat najważniejszych informacji,
 - **Dzisiaj** — aktualna/następna lekcja, plan dnia, obecność i alerty,
-- **Plan** — tydzień, wspólne sloty godzinowe, bieżąca linia czasu, zastępstwa i anulowania,
+- **Plan** — tydzień, wspólne sloty godzinowe, bieżąca linia czasu, zastępstwa i anulowania; lekcja bieżąca, odbyta, przyszła i odwołana mają osobne stany wizualne i tekstowe znaczniki,
 - **Frekwencja** — podsumowanie stanów i ostatnie wpisy,
 - **Oceny** — oceny cząstkowe i klasyfikacyjne,
-- **Terminarz** — nadchodzące i ostatnie sprawdziany/zadania,
+- **Terminarz** — nadchodzące i ostatnie sprawdziany/zadania; lista pokazuje skrót opisu, a kliknięcie otwiera pełną treść,
 - **Uwagi** — uwagi i pochwały,
 - **Wiadomości** — odebrane wiadomości i ich treść,
 - **Statystyki** — frekwencja ogólna i per przedmiot,
@@ -130,9 +133,37 @@ Dostępne są m.in.:
 
 Zakładki danych dodatkowych są dynamiczne i zależą od rzeczywiście dostępnych danych. Układ jest responsywny dla desktopu, tabletu i telefonu.
 
+### Szczegóły po kliknięciu
+
+W HACS 0.12.0 Terminarz, zadania domowe, sprawdziany/kartkówki oraz wpisy „Ważne dzisiaj” korzystają ze wspólnego widoku szczegółów:
+
+- na liście widoczny jest krótki, bezpiecznie escapowany podgląd,
+- kliknięcie lub aktywacja klawiaturą otwiera dialog z pełną treścią dostępną LIVE,
+- `Esc`, przycisk zamknięcia lub kliknięcie tła zamyka dialog,
+- fokus wraca do elementu, który otworzył szczegóły,
+- na telefonie dialog działa jak pełnoszeroki bottom sheet,
+- surowy HTML ze źródła nie jest wstrzykiwany do DOM.
+
+Jeżeli źródło nie udostępnia dodatkowej treści, interfejs pokazuje neutralny komunikat „Brak dodatkowej treści”.
+
+## Dashboard przeglądarkowy
+
+HACS 0.12.0 rejestruje drugi, pełnoekranowy panel Home Assistant:
+
+`/mojv-dashboard`
+
+Dashboard:
+
+- pozostaje za standardowym uwierzytelnianiem Home Assistant,
+- nie ma osobnego loginu, tokenu ani publicznego API,
+- korzysta z tego samego bezpiecznego payloadu i renderera co School Hub,
+- obsługuje ten sam wybór dziecka i te same widoki,
+- jest przeznaczony do desktopu, tabletu lub przeglądarki kioskowej,
+- może być otwarty przyciskiem **Otwórz dashboard** z School Hub.
+
 ## Encje Home Assistant
 
-Dla każdego ucznia HACS 0.11.0 tworzy szeroką powierzchnię encji. Bazowo są to m.in.:
+Dla każdego ucznia HACS 0.12.0 tworzy szeroką powierzchnię encji. Bazowo są to m.in.:
 
 - aktualna i następna lekcja,
 - numer lekcji i minuty do końca,
@@ -209,8 +240,10 @@ Historia przechowuje maksymalnie 200 najnowszych, deduplikowanych rekordów na w
 - surowe identyfikatory routingu wiadomości nie są przekazywane do Home Assistant,
 - publiczne ID wiadomości jest stabilnym hashem,
 - Core rekurencyjnie odrzuca niedozwolone pola uwierzytelniające/routingu w payloadzie helpera,
-- panel, encje i historia powiadomień dostają wyłącznie publiczne dane potrzebne do działania,
-- HACS 0.11.0 nie eksportuje wrażliwego profilu ucznia ani zdjęcia,
+- panel, dashboard, encje i historia powiadomień dostają wyłącznie publiczne dane potrzebne do działania,
+- pełne treści są whitelistowane i renderowane jako bezpieczny tekst; surowy zdalny HTML nie trafia bezpośrednio do DOM,
+- HACS 0.12.0 nie eksportuje wrażliwego profilu ucznia ani zdjęcia,
+- dashboard przeglądarkowy korzysta ze standardowego uwierzytelniania Home Assistant i nie wprowadza osobnego magazynu poświadczeń,
 - awaria pojedynczego modułu danych lub pojedynczego targetu push nie zatrzymuje pozostałych modułów/odbiorców.
 
 ## Wydajność
@@ -219,14 +252,15 @@ Historia przechowuje maksymalnie 200 najnowszych, deduplikowanych rekordów na w
 - requesty są wykonywane współbieżnie tam, gdzie jest to bezpieczne,
 - jeden `snapshot_builder` normalizuje dane niezależnie od backendu logowania,
 - frontend nie odpytuje portalu przy lokalnym przełączaniu widoków,
+- dashboard przeglądarkowy reuse’uje ten sam komponent i payload zamiast uruchamiać drugi poller,
 - minutowy ticker powiadomień ocenia wyłącznie dane znajdujące się już w pamięci,
 - Chromium pozostaje poza procesem Home Assistant Core.
 
 ## Diagnostyka
 
-Przy starcie integracji HACS 0.11.0 w logu powinien pojawić się wpis:
+Przy starcie integracji HACS 0.12.0 w logu powinien pojawić się wpis:
 
-`mojV integration version=0.11.0`
+`mojV integration version=0.12.0`
 
 W logach helpera:
 
@@ -251,10 +285,14 @@ Nie publikuj loginu, hasła, cookies, tokenów, kluczy sesji ani kluczy routingu
 - `sensor.py`, `binary_sensor.py`, `calendar.py` — powierzchnia encji HA,
 - `notification_rules.py`, `notification_history.py`, `notifications.py` — Notification Engine v2,
 - `config_flow.py` — logowanie oraz Options Flow,
-- `panel_base.py` + `panel.py` — bezpieczny WebSocket payload School Hub,
+- `panel_students.py` — deterministyczna deduplikacja publicznych wierszy uczniów,
+- `panel_base.py` + `panel.py` — bezpieczny WebSocket payload School Hub i rejestracja paneli,
 - `frontend/school-panel.js` — bazowy panel,
 - `frontend/school-panel-live.js` — widoki rozszerzonych modułów,
-- `frontend/school-panel-hub-base.js` + `frontend/school-panel-hub.js` — School Hub, Pulpit, Aktywność, Powiadomienia, Informacje i Tematy.
+- `frontend/school-panel-hub-base.js` + `frontend/school-panel-hub.js` — School Hub, Pulpit, Aktywność, Powiadomienia, Informacje i Tematy,
+- `frontend/school-panel-details.js` — bezpieczne preview i dialogi pełnej treści,
+- `frontend/school-panel-lesson-states.js` — klasyfikacja i wizualizacja stanów lekcji,
+- `frontend/school-dashboard.js` — pełnoekranowy wrapper przeglądarkowy reuse’ujący School Hub.
 
 ### `gekon27/mojv-auth-helper` — Home Assistant App
 
@@ -265,7 +303,7 @@ Osobne repo zawiera metadata App Store, Dockerfile, Chromium/Xvfb runtime, rozsz
 Repo HACS uruchamia:
 
 - kompilację i testy Python,
-- kontrolę składni czterech wykonywanych warstw panelu JavaScript,
+- kontrolę składni siedmiu wykonywanych modułów JavaScript panelu/dashboardu,
 - Hassfest,
 - HACS validation,
 - kontrolę spójności `manifest.json`, README i CHANGELOG,

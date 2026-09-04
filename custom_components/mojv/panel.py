@@ -3,7 +3,16 @@ from __future__ import annotations
 
 from typing import Any
 
+import voluptuous as vol
+
+from homeassistant.components import frontend, panel_custom, websocket_api
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.util import dt as dt_util
+
 from . import panel_base as _base
+from .const import DOMAIN
+from .coordinator import MojVCoordinator
+from .panel_students import select_student_rows
 
 PANEL_URL_PATH = _base.PANEL_URL_PATH
 PANEL_TITLE = _base.PANEL_TITLE
@@ -13,6 +22,12 @@ PANEL_STATIC_URL = _base.PANEL_STATIC_URL
 DATA_PANEL_REGISTERED = _base.DATA_PANEL_REGISTERED
 DATA_NOTIFIERS = _base.DATA_NOTIFIERS
 DAY_NAMES = _base.DAY_NAMES
+
+DASHBOARD_URL_PATH = "mojv-dashboard"
+DASHBOARD_ELEMENT = "mojv-school-dashboard"
+DASHBOARD_TITLE = "Dashboard szkoły"
+DASHBOARD_ICON = "mdi:view-dashboard-outline"
+DATA_DASHBOARD_REGISTERED = f"{DOMAIN}_dashboard_registered"
 
 _BASE_STUDENT_DICT = _base._student_dict
 
@@ -78,6 +93,7 @@ def _student_dict(
             "subject": item.subject,
             "kind": item.kind,
             "title": item.title,
+            "description": item.description,
         }
         for item in snapshot.important_today
     ]
@@ -121,11 +137,83 @@ def _student_dict(
 
 _base._student_dict = _student_dict
 
-websocket_panel_data = _base.websocket_panel_data
-async_register_school_panel = _base.async_register_school_panel
-async_unregister_school_panel = _base.async_unregister_school_panel
+
+@callback
+@websocket_api.websocket_command({vol.Required("type"): "mojv/panel"})
+def websocket_panel_data(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Return one newest safe panel row for every stable student ID."""
+    now = dt_util.now()
+    candidates: list[tuple[Any, int, dict[str, Any]]] = []
+    updated_at = None
+    notifiers = hass.data.get(DATA_NOTIFIERS, {})
+    insertion_index = 0
+
+    for entry_id, coordinator in hass.data.get(DOMAIN, {}).items():
+        if not isinstance(coordinator, MojVCoordinator):
+            continue
+        notifier = notifiers.get(entry_id)
+        notification_rows = (
+            notifier.notification_rows()
+            if notifier is not None and hasattr(notifier, "notification_rows")
+            else []
+        )
+        stamp = coordinator.data.updated_at
+        for item in coordinator.data.students:
+            candidates.append(
+                (stamp, insertion_index, _student_dict(item, now, notification_rows))
+            )
+            insertion_index += 1
+        if updated_at is None or stamp > updated_at:
+            updated_at = stamp
+
+    connection.send_result(
+        msg["id"],
+        {
+            "students": select_student_rows(candidates),
+            "updated_at": updated_at.isoformat() if updated_at else None,
+            "now": now.isoformat(),
+        },
+    )
+
+
+_base.websocket_panel_data = websocket_panel_data
+
+
+async def async_register_school_panel(hass: HomeAssistant) -> None:
+    """Register the regular School Hub and authenticated browser dashboard."""
+    await _base.async_register_school_panel(hass)
+    if hass.data.get(DATA_DASHBOARD_REGISTERED):
+        return
+
+    await panel_custom.async_register_panel(
+        hass,
+        webcomponent_name=DASHBOARD_ELEMENT,
+        frontend_url_path=DASHBOARD_URL_PATH,
+        module_url=f"{PANEL_STATIC_URL}/school-dashboard.js",
+        sidebar_title=DASHBOARD_TITLE,
+        sidebar_icon=DASHBOARD_ICON,
+        require_admin=False,
+        config={"title": DASHBOARD_TITLE, "full_screen": True},
+    )
+    hass.data[DATA_DASHBOARD_REGISTERED] = True
+
+
+def async_unregister_school_panel(hass: HomeAssistant) -> None:
+    """Remove both mojV panel surfaces when the last entry unloads."""
+    if hass.data.get(DATA_DASHBOARD_REGISTERED):
+        frontend.async_remove_panel(hass, DASHBOARD_URL_PATH)
+        hass.data[DATA_DASHBOARD_REGISTERED] = False
+    _base.async_unregister_school_panel(hass)
+
 
 __all__ = [
+    "DASHBOARD_ELEMENT",
+    "DASHBOARD_TITLE",
+    "DASHBOARD_URL_PATH",
     "DATA_NOTIFIERS",
     "PANEL_ELEMENT",
     "PANEL_ICON",

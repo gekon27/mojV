@@ -1,4 +1,6 @@
 import "./school-panel-hub-base.js";
+import "./school-panel-details.js";
+import "./school-panel-lesson-states.js";
 
 const PanelClass = customElements.get("mojv-school-panel");
 const proto = PanelClass?.prototype;
@@ -6,10 +8,23 @@ const proto = PanelClass?.prototype;
 if (proto && !proto.__mojvExpandedSchoolHubPatched) {
   proto.__mojvExpandedSchoolHubPatched = true;
 
+  const baseConnectedCallback = proto.connectedCallback;
   const baseAvailableViews = proto._availableViews;
   const baseRenderActiveView = proto._renderActiveView;
   const baseRenderDashboard = proto._renderDashboard;
   const baseStyles = proto._styles;
+
+  proto.connectedCallback = function () {
+    const result = baseConnectedCallback.call(this);
+    if (!this.__mojvBrowserDashboardActionAdded) {
+      const actions = this.shadowRoot.querySelector(".top-actions");
+      if (actions) {
+        actions.insertAdjacentHTML("afterbegin", `<a href="/mojv-dashboard" class="dashboard-link" title="Otwórz pełny dashboard">Otwórz dashboard</a>`);
+        this.__mojvBrowserDashboardActionAdded = true;
+      }
+    }
+    return result;
+  };
 
   proto._availableViews = function (student) {
     const views = baseAvailableViews.call(this, student);
@@ -57,7 +72,10 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
     if (!lucky_number && !important_today.length && !next_free_day) return base;
 
     const important = important_today.length
-      ? `<div class="expanded-important-list">${important_today.map((item) => `<div class="expanded-important-row"><strong>${this._e(item.title || item.kind || "Ważne")}</strong>${item.subject ? `<span>${this._e(item.subject)}</span>` : ""}</div>`).join("")}</div>`
+      ? `<div class="expanded-important-list">${important_today.map((item, index) => {
+        const preview = this._detailPreview(item.description, 120);
+        return `<button type="button" class="expanded-important-row mojv-detail-trigger" data-mojv-detail-kind="important" data-mojv-detail-index="${index}" aria-label="Pokaż szczegóły: ${this._e(item.title || item.kind || "Ważne")}"><strong>${this._e(item.title || item.kind || "Ważne")}</strong>${item.subject ? `<span>${this._e(item.subject)}</span>` : ""}${preview ? `<small>${this._e(preview)}</small>` : ""}</button>`;
+      }).join("")}</div>`
       : `<span class="expanded-muted">Brak dodatkowych wpisów na dziś.</span>`;
     const extra = `<section class="card expanded-today-card">
       <div class="section-head"><div><span class="kicker">Dzisiaj</span><h2>Ważne informacje</h2></div></div>
@@ -122,10 +140,11 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
 
   proto._styles = function () {
     return `${baseStyles.call(this)}
-      .expanded-today-card{display:grid;gap:14px;padding:18px}.expanded-today-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.expanded-today-grid>div,.expanded-important-row{display:grid;gap:3px;padding:12px;border:1px solid var(--mv-line);border-radius:12px;background:var(--mv-soft)}.expanded-today-grid small,.expanded-today-grid span,.expanded-important-row span,.expanded-muted{color:var(--mv-muted)}.expanded-today-grid strong{font-size:20px}.expanded-important-list{display:grid;gap:8px}
+      .dashboard-link{display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border:1px solid var(--mv-line);border-radius:12px;background:var(--mv-soft);color:var(--primary-text-color,#fff);text-decoration:none;font-size:12px;font-weight:700;white-space:nowrap}.dashboard-link:hover,.dashboard-link:focus-visible{border-color:var(--mv-accent);outline:none}
+      .expanded-today-card{display:grid;gap:14px;padding:18px}.expanded-today-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.expanded-today-grid>div,.expanded-important-row{display:grid;gap:3px;padding:12px;border:1px solid var(--mv-line);border-radius:12px;background:var(--mv-soft)}.expanded-important-row{width:100%;color:inherit;text-align:left;cursor:pointer}.expanded-important-row:hover,.expanded-important-row:focus-visible{border-color:var(--mv-accent);outline:none}.expanded-today-grid small,.expanded-today-grid span,.expanded-important-row span,.expanded-important-row small,.expanded-muted{color:var(--mv-muted)}.expanded-today-grid strong{font-size:20px}.expanded-important-list{display:grid;gap:8px}
       .expanded-info-view{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.expanded-info-card,.expanded-topics-card{padding:18px}.expanded-kv,.expanded-simple-list{display:grid;gap:8px}.expanded-kv>div,.expanded-simple-list>div{display:grid;gap:2px;padding:10px 0;border-bottom:1px solid var(--mv-line)}.expanded-kv>div:last-child,.expanded-simple-list>div:last-child{border-bottom:0}.expanded-kv small,.expanded-simple-list span{color:var(--mv-muted)}.expanded-status-line{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;background:var(--mv-soft);margin-bottom:8px}.expanded-status-line strong{color:var(--error-color,#db4437)}
       .expanded-topic-list{display:grid}.expanded-topic-list article{display:grid;grid-template-columns:110px minmax(0,1fr);gap:14px;padding:12px 0;border-bottom:1px solid var(--mv-line)}.expanded-topic-list article:last-child{border-bottom:0}.expanded-topic-list time,.expanded-topic-list small,.expanded-topic-list span{color:var(--mv-muted)}.expanded-topic-list article>div{display:grid;gap:3px}
-      @media(max-width:760px){.expanded-info-view{grid-template-columns:1fr}.expanded-today-grid{grid-template-columns:1fr}.expanded-topic-list article{grid-template-columns:1fr;gap:4px}}
+      @media(max-width:760px){.dashboard-link{display:none}.expanded-info-view{grid-template-columns:1fr}.expanded-today-grid{grid-template-columns:1fr}.expanded-topic-list article{grid-template-columns:1fr;gap:4px}}
     `;
   };
 }

@@ -26,7 +26,10 @@ jobs:
           node --check custom_components/mojv/frontend/school-panel.js
           node --check custom_components/mojv/frontend/school-panel-live.js
           node --check custom_components/mojv/frontend/school-panel-hub-base.js
+          node --check custom_components/mojv/frontend/school-panel-details.js
+          node --check custom_components/mojv/frontend/school-panel-lesson-states.js
           node --check custom_components/mojv/frontend/school-panel-hub.js
+          node --check custom_components/mojv/frontend/school-dashboard.js
       - name: Install validation dependencies
         run: python -m pip install --disable-pip-version-check pytest aiohttp
       - name: Check release version consistency

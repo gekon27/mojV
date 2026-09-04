@@ -204,6 +204,7 @@ class ImportantToday:
     subject: str = ""
     kind: str = ""
     title: str = ""
+    description: str = ""
 
 
 @dataclass(frozen=True, slots=True)
