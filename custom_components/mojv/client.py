@@ -197,6 +197,15 @@ class MojVClient:
         message_details: dict[str, Any] | None = None,
         achievements: Any = None,
         meetings: Any = None,
+        lucky_number: Any = None,
+        free_days: Any = None,
+        excuses: Any = None,
+        teachers: Any = None,
+        school_info: Any = None,
+        important_today: Any = None,
+        homeroom_teachers: Any = None,
+        completed_lessons: Any = None,
+        snapshot_time=None,
     ) -> StudentSnapshot:
         return build_student_snapshot(
             student_id=student_id,
@@ -215,6 +224,15 @@ class MojVClient:
             message_details=message_details,
             achievements=achievements,
             meetings=meetings,
+            lucky_number=lucky_number,
+            free_days=free_days,
+            excuses=excuses,
+            teachers=teachers,
+            school_info=school_info,
+            important_today=important_today,
+            homeroom_teachers=homeroom_teachers,
+            completed_lessons=completed_lessons,
+            snapshot_time=snapshot_time,
             timezone=dt_util.DEFAULT_TIME_ZONE,
         )
 
@@ -232,6 +250,7 @@ class MojVClient:
         except HelperRequestError as err:
             raise MojVClientError(f"Błąd lokalnego helpera logowania: {err}") from err
 
+        snapshot_time = dt_util.now()
         students: list[StudentSnapshot] = []
         for row in payload.get("students", []):
             if not isinstance(row, dict):
@@ -254,11 +273,20 @@ class MojVClient:
                     message_details=row.get("message_details"),
                     achievements=row.get("achievements"),
                     meetings=row.get("meetings"),
+                    lucky_number=row.get("lucky_number"),
+                    free_days=row.get("free_days"),
+                    excuses=row.get("excuses"),
+                    teachers=row.get("teachers"),
+                    school_info=row.get("school_info"),
+                    important_today=row.get("important_today"),
+                    homeroom_teachers=row.get("homeroom_teachers"),
+                    completed_lessons=row.get("completed_lessons"),
+                    snapshot_time=snapshot_time,
                 )
             )
         if not students:
             raise MojVClientError("Nie otrzymano danych żadnego dziecka")
-        return AccountSnapshot(students=tuple(students), updated_at=dt_util.now())
+        return AccountSnapshot(students=tuple(students), updated_at=snapshot_time)
 
     async def _async_login(self) -> None:
         await self.async_close()
@@ -364,6 +392,15 @@ class MojVClient:
                 message_details=bundle.message_details,
                 achievements=bundle.achievements,
                 meetings=bundle.meetings,
+                lucky_number=bundle.lucky_number,
+                free_days=bundle.free_days,
+                excuses=bundle.excuses,
+                teachers=bundle.teachers,
+                school_info=bundle.school_info,
+                important_today=bundle.important_today,
+                homeroom_teachers=bundle.homeroom_teachers,
+                completed_lessons=bundle.completed_lessons,
+                snapshot_time=now,
             )
             for bundle in bundles
         ]
