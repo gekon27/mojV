@@ -87,6 +87,7 @@ def _student_dict(
             "subject": item.subject,
             "kind": item.kind,
             "title": item.title,
+            "description": item.description,
         }
         for item in snapshot.important_today
     ]
