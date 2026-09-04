@@ -21,7 +21,7 @@ def test_hacs_keeps_runtime_gateway_and_secret_protocol() -> None:
 def test_hacs_repository_points_to_standalone_helper_repository() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "https://github.com/gekon27/mojv-auth-helper" in readme
-    assert "mojV Auth Helper 0.1.10" in readme
+    assert "mojV Auth Helper 0.1.11" in readme
 
 
 def test_release_metadata_tracks_manifest_without_freezing_patch_version() -> None:
