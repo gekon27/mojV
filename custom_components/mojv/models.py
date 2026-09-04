@@ -101,16 +101,22 @@ class AttendanceStat:
     excused: int = 0
     late: int = 0
     excused_late: int = 0
+    school_activity: int = 0
     released: int = 0
     total: int = 0
+    percentage: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class Achievement:
-    """Student achievement entry."""
+    """Student achievement entry.
+
+    Some portal deployments return achievements without a date. ``None`` is
+    preserved instead of inventing a timestamp.
+    """
 
     achievement_id: str
-    date: datetime
+    date: datetime | None
     title: str
     description: str = ""
 
@@ -121,9 +127,10 @@ class Meeting:
 
     meeting_id: str
     start: datetime
-    title: str
+    title: str = ""
     location: str = ""
     description: str = ""
+    online_url: str = ""
 
 
 @dataclass(frozen=True, slots=True)

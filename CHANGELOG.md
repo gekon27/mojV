@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.0] - 2026-09-04
+
+- dodano rzeczywiste moduły LIVE: uwagi/pochwały, wiadomości, osiągnięcia i zebrania,
+- rozszerzono frekwencję o statystyki ogólne oraz per przedmiot,
+- wiadomości są pobierane z osobnego tenantu i łączone z treścią szczegółową,
+- surowe `globalKeySkrzynka` i `apiGlobalKey` nie opuszczają warstwy transportu; publiczne ID wiadomości jest stabilnym hashem,
+- Core rekurencyjnie odrzuca mailbox/session/routing fields również w zagnieżdżonych payloadach helpera,
+- panel **Szkoła** otrzymał dynamiczne widoki **Wiadomości**, **Statystyki**, **Osiągnięcia** i **Zebrania**; zakładki pojawiają się tylko przy prawdziwych danych,
+- helper `0.1.8` uzyskał parity z bezpośrednim HTTP dla nowych modułów przy zachowaniu HTTP-first i automatycznego fallbacku,
+- zachowano obsługę 1..N dzieci oraz izolację błędów per moduł,
+- CI sprawdza obie warstwy JavaScript panelu, testy Python, Hassfest i HACS,
+- dodano testy RED→GREEN dla kontraktu panelu, sekretów/routingu i helpera `0.1.8`,
+- README, manifest i changelog zsynchronizowane do `0.9.0`.
+
 ## [0.8.1] - 2026-09-04
 
 - zakończone atomowe rozdzielenie HACS i browser-auth: `mojV` jest ponownie czystym repozytorium integracji Home Assistant,

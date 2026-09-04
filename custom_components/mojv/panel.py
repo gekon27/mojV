@@ -143,9 +143,56 @@ def _student_dict(snapshot, now) -> dict[str, Any]:
                 "text": remark.text,
                 "author": remark.author,
                 "category": remark.category,
+                "kind": remark.kind,
                 "points": remark.points,
             }
             for remark in snapshot.remarks
+        ],
+        "messages": [
+            {
+                "id": message.message_id,
+                "date": message.date.isoformat(),
+                "sender": message.sender,
+                "subject": message.subject,
+                "body": message.body,
+                "unread": message.unread,
+            }
+            for message in snapshot.messages
+        ],
+        "attendance_stats": [
+            {
+                "subject": stat.subject,
+                "present": stat.present,
+                "absent": stat.absent,
+                "excused": stat.excused,
+                "late": stat.late,
+                "excused_late": stat.excused_late,
+                "school_activity": stat.school_activity,
+                "released": stat.released,
+                "total": stat.total,
+                "percentage": stat.percentage,
+            }
+            for stat in snapshot.attendance_stats
+        ],
+        "achievements": [
+            {
+                "id": item.achievement_id,
+                "date": item.date.isoformat() if item.date else None,
+                "title": item.title,
+                "description": item.description,
+            }
+            for item in snapshot.achievements
+        ],
+        "meetings": [
+            {
+                "id": item.meeting_id,
+                "start": item.start.isoformat(),
+                "title": item.title,
+                "location": item.location,
+                "description": item.description,
+                "online_url": item.online_url,
+            }
+            for item in snapshot.meetings
         ],
     }
 
@@ -200,7 +247,7 @@ async def async_register_school_panel(hass: HomeAssistant) -> None:
         hass,
         webcomponent_name=PANEL_ELEMENT,
         frontend_url_path=PANEL_URL_PATH,
-        module_url=f"{PANEL_STATIC_URL}/school-panel.js",
+        module_url=f"{PANEL_STATIC_URL}/school-panel-live.js",
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
         require_admin=False,
