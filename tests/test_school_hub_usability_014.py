@@ -13,6 +13,8 @@ API_MODULE = MOJV / "school_api.py"
 HUB_JS = FRONTEND / "school-panel-hub.js"
 LESSON_STATES_JS = FRONTEND / "school-panel-lesson-states.js"
 DETAILS_JS = FRONTEND / "school-panel-details.js"
+PANEL_BASE = MOJV / "panel_base.py"
+CALENDAR_PY = MOJV / "calendar.py"
 
 
 def _load_api():
@@ -50,8 +52,10 @@ class FakeTransport:
             return {
                 "id": 101,
                 "typ": 4,
+                "data": "2026-09-06T14:30:00+02:00",
                 "terminOdpowiedzi": "2026-09-10T00:00:00+02:00",
                 "przedmiotNazwa": "Matematyka",
+                "nauczycielImieNazwisko": "Anna Nowak",
                 "opis": "Zrób zadania 1-5 ze strony 42.",
             }
         if path.endswith("/api/SprawdzianSzczegoly"):
@@ -60,6 +64,7 @@ class FakeTransport:
                 "typ": 1,
                 "data": "2026-09-11T00:00:00+02:00",
                 "przedmiotNazwa": "Historia",
+                "nauczycielImieNazwisko": "Jan Kowalski",
                 "opis": "Rozdziały 3 i 4.",
             }
         return []
@@ -155,7 +160,10 @@ def test_schoolwork_details_override_list_preview_with_full_content() -> None:
 
     rows = {str(row["id"]): row for row in bundle.schoolwork}
     assert rows["101"]["opis"] == "Zrób zadania 1-5 ze strony 42."
+    assert rows["101"]["nauczycielImieNazwisko"] == "Anna Nowak"
+    assert rows["101"]["terminOdpowiedzi"] == "2026-09-10T00:00:00+02:00"
     assert rows["102"]["opis"] == "Rozdziały 3 i 4."
+    assert rows["102"]["nauczycielImieNazwisko"] == "Jan Kowalski"
 
     homework_call = next(call for call in transport.calls if call[0].endswith("/api/ZadanieDomoweSzczegoly"))
     exam_call = next(call for call in transport.calls if call[0].endswith("/api/SprawdzianSzczegoly"))
@@ -168,3 +176,20 @@ def test_term_calendar_uses_full_description_in_detail_overlay() -> None:
     assert "item.description" in source
     assert "_openMojvDetail" in source
     assert "Brak dodatkowej treści" in source
+
+
+def test_term_calendar_exposes_complete_schoolwork_metadata() -> None:
+    details = DETAILS_JS.read_text(encoding="utf-8")
+    panel = PANEL_BASE.read_text(encoding="utf-8")
+    calendar = CALENDAR_PY.read_text(encoding="utf-8")
+
+    for token in ("item.teacher", "item.created_at", "item.due_at"):
+        assert token in details
+    for label in ("Przedmiot", "Nauczyciel", "Utworzone", "Termin"):
+        assert label in details
+    assert '"teacher": item.teacher' in panel
+    assert '"created_at": item.created_at.isoformat() if item.created_at else None' in panel
+    assert '"due_at": item.due_at.isoformat() if item.due_at else None' in panel
+    assert "Nauczyciel:" in calendar
+    assert "Utworzone:" in calendar
+    assert "Termin:" in calendar
