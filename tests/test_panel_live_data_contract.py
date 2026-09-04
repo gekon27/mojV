@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PANEL = ROOT / "custom_components" / "mojv" / "panel.py"
 FRONTEND = ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js"
 FRONTEND_LIVE = ROOT / "custom_components" / "mojv" / "frontend" / "school-panel-live.js"
+FRONTEND_HUB = ROOT / "custom_components" / "mojv" / "frontend" / "school-panel-hub.js"
 
 
 def test_panel_payload_exposes_all_live_modules() -> None:
@@ -28,7 +29,8 @@ def test_panel_payload_exposes_all_live_modules() -> None:
     assert '"body": message.body' in source
     assert '"unread": message.unread' in source
     assert '"percentage": stat.percentage' in source
-    assert "school-panel-live.js" in source
+    assert "school-panel-hub.js" in source
+    assert 'import "./school-panel-live.js"' in FRONTEND_HUB.read_text(encoding="utf-8")
 
 
 def test_frontend_has_dynamic_live_module_views() -> None:

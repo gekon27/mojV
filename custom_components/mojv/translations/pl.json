@@ -28,7 +28,7 @@
     "error": {
       "invalid_auth": "Nieprawidłowy login lub hasło.",
       "browser_verification_required": "Portal szkolny wymaga pełnej przeglądarki dla tego konta.",
-      "helper_required": "Portal szkolny wymaga pełnej przeglądarki. Zainstaluj i uruchom aplikację „mojV Auth Helper” z tego samego repozytorium, a następnie spróbuj ponownie.",
+      "helper_required": "Portal szkolny wymaga pełnej przeglądarki. Zainstaluj i uruchom aplikację „mojV Auth Helper” z repozytorium gekon27/mojv-auth-helper, a następnie spróbuj ponownie.",
       "helper_failed": "Lokalny mojV Auth Helper działa, ale logowanie w przeglądarce nie zostało ukończone. Sprawdź log aplikacji mojV Auth Helper.",
       "no_students": "Logowanie powiodło się, ale na koncie nie znaleziono żadnego dziecka.",
       "cannot_connect": "Nie można połączyć się z portalem szkolnym.",
@@ -36,6 +36,56 @@
     },
     "abort": {
       "already_configured": "To konto mojV jest już skonfigurowane."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Powiadomienia",
+        "description": "Wybierz alerty mojV i opcjonalne urządzenia do powiadomień push. Powiadomienia trwałe Home Assistant oraz zdarzenia mojV działają niezależnie od push.",
+        "data": {
+          "notification_types": "Typy powiadomień",
+          "notify_targets": "Urządzenia / encje powiadomień",
+          "lesson_end_minutes": "Przypomnienie przed końcem lekcji (minuty)",
+          "schoolwork_lead_hours": "Przypomnienie przed terminem zadania lub sprawdzianu (godziny)",
+          "meeting_lead_hours": "Przypomnienie przed zebraniem (godziny)",
+          "quiet_hours_enabled": "Wycisz push w godzinach ciszy",
+          "quiet_hours_start": "Początek godzin ciszy",
+          "quiet_hours_end": "Koniec godzin ciszy"
+        },
+        "data_description": {
+          "notification_types": "Odznaczenie typu wyłącza jego nowe alerty we wszystkich kanałach mojV.",
+          "notify_targets": "Opcjonalne encje notify. Puste pole pozostawia tylko powiadomienia trwałe i zdarzenia Home Assistant.",
+          "lesson_end_minutes": "Lokalny minutowy zegar mojV sprawdza ten próg bez dodatkowego pobierania danych z portalu.",
+          "schoolwork_lead_hours": "0 oznacza brak wcześniejszego okna przypomnienia dla terminu.",
+          "meeting_lead_hours": "0 oznacza brak wcześniejszego okna przypomnienia dla zebrania.",
+          "quiet_hours_enabled": "Godziny ciszy blokują tylko push. Historia, powiadomienia trwałe i zdarzenia nadal są zapisywane.",
+          "quiet_hours_start": "Format 24-godzinny HH:MM, np. 22:00.",
+          "quiet_hours_end": "Format 24-godzinny HH:MM, np. 07:00."
+        }
+      }
+    }
+  },
+  "selector": {
+    "notification_types": {
+      "options": {
+        "grade": "Nowa ocena",
+        "final_grade": "Zmiana oceny proponowanej lub końcowej",
+        "remark": "Nowa uwaga",
+        "praise": "Nowa pochwała",
+        "message": "Nowa wiadomość",
+        "absence": "Nieobecność",
+        "late": "Spóźnienie",
+        "lesson_cancelled": "Odwołana lekcja",
+        "lesson_replacement": "Zastępstwo",
+        "lesson_changed": "Zmiana godziny, sali lub nauczyciela",
+        "lesson_ending": "Zbliżający się koniec lekcji",
+        "schoolwork_new": "Nowy sprawdzian, kartkówka lub zadanie",
+        "schoolwork_due": "Zbliżający się termin",
+        "meeting_new": "Nowe zebranie",
+        "meeting_due": "Zbliżające się zebranie",
+        "achievement": "Nowe osiągnięcie"
+      }
     }
   }
 }
