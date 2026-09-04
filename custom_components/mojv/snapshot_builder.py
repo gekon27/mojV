@@ -2,12 +2,33 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import tzinfo
+from datetime import datetime, tzinfo
 from typing import Any
 
-from .models import Achievement, Grade, Meeting, Message, SchoolWork, Student, StudentSnapshot
+from .models import (
+    Achievement,
+    AttendanceExcuses,
+    CompletedLesson,
+    FreeDay,
+    Grade,
+    Meeting,
+    Message,
+    SchoolWork,
+    Student,
+    StudentSnapshot,
+)
 from .parsers.achievements import parse_achievements
 from .parsers.attendance import parse_attendance_stats
+from .parsers.extras import (
+    parse_completed_lessons,
+    parse_excuses,
+    parse_free_days,
+    parse_homeroom_teachers,
+    parse_important_today,
+    parse_lucky_number,
+    parse_school_info,
+    parse_teachers,
+)
 from .parsers.grades import parse_grades
 from .parsers.meetings import parse_meetings
 from .parsers.messages import parse_messages
@@ -41,6 +62,15 @@ def build_student_snapshot(
     message_details: dict[str, Any] | None = None,
     achievements: Any = None,
     meetings: Any = None,
+    lucky_number: Any = None,
+    free_days: Any = None,
+    excuses: Any = None,
+    teachers: Any = None,
+    school_info: Any = None,
+    important_today: Any = None,
+    homeroom_teachers: Any = None,
+    completed_lessons: Any = None,
+    snapshot_time: datetime | None = None,
     timezone: tzinfo | None = None,
 ) -> StudentSnapshot:
     """Normalize all supported live modules for one student."""
@@ -86,6 +116,35 @@ def build_student_snapshot(
         replace(item, start=_localize(item.start, timezone)) for item in raw_meetings
     )
 
+    raw_free_days = parse_free_days(free_days)
+    normalized_free_days: tuple[FreeDay, ...] = tuple(
+        replace(
+            item,
+            start=_localize(item.start, timezone),
+            end=_localize(item.end, timezone),
+        )
+        for item in raw_free_days
+    )
+
+    raw_excuses = parse_excuses(excuses)
+    normalized_excuses = AttendanceExcuses(
+        active=raw_excuses.active,
+        blocked=raw_excuses.blocked,
+        entries=tuple(
+            replace(item, date=_localize(item.date, timezone))
+            for item in raw_excuses.entries
+        ),
+    )
+
+    raw_completed = parse_completed_lessons(completed_lessons)
+    normalized_completed: tuple[CompletedLesson, ...] = tuple(
+        replace(item, date=_localize(item.date, timezone)) for item in raw_completed
+    )
+
+    effective_time = snapshot_time
+    if effective_time is None:
+        effective_time = datetime.now(tz=timezone) if timezone is not None else datetime.now()
+
     return StudentSnapshot(
         student=Student(
             student_id=str(student_id),
@@ -105,4 +164,12 @@ def build_student_snapshot(
         ),
         achievements=normalized_achievements,
         meetings=normalized_meetings,
+        lucky_number=parse_lucky_number(lucky_number, effective_time),
+        free_days=normalized_free_days,
+        excuses=normalized_excuses,
+        teachers=parse_teachers(teachers),
+        school_info=parse_school_info(school_info),
+        important_today=parse_important_today(important_today),
+        homeroom_teachers=parse_homeroom_teachers(homeroom_teachers),
+        completed_lessons=normalized_completed,
     )
