@@ -39,56 +39,60 @@ def test_supervisor_data_unwraps_result_and_data_envelopes() -> None:
     assert helper.unwrap_supervisor({"data": {"addons": []}}) == {"addons": []}
 
 
+def _base_student() -> dict:
+    return {
+        "student_id": "1",
+        "name": "Jan Kowalski",
+        "class_name": "5A",
+        "timetable": [],
+        "attendance": [],
+    }
+
+
 def test_helper_snapshot_rejects_secret_fields() -> None:
     helper = _load()
-    payload = {
-        "students": [
-            {
-                "student_id": "1",
-                "name": "Jan Kowalski",
-                "class_name": "5A",
-                "timetable": [],
-                "attendance": [],
-                "journal_id": "99",
-                "grades_by_period": {"1": {"token": "nested-secret"}},
-            }
-        ]
-    }
-    assert helper.validate_snapshot(payload) is False
+    student = _base_student()
+    student.update(
+        {
+            "journal_id": "99",
+            "grades_by_period": {"1": {"token": "nested-secret"}},
+        }
+    )
+    assert helper.validate_snapshot({"students": [student]}) is False
 
 
 def test_helper_snapshot_rejects_nested_secret_fields() -> None:
     helper = _load()
-    payload = {
-        "students": [
-            {
-                "student_id": "1",
-                "name": "Jan Kowalski",
-                "class_name": "5A",
-                "timetable": [],
-                "attendance": [],
-                "grades_by_period": {"1": {"cookies": {"secret": "x"}}},
-            }
-        ]
-    }
-    assert helper.validate_snapshot(payload) is False
+    student = _base_student()
+    student["grades_by_period"] = {"1": {"cookies": {"secret": "x"}}}
+    assert helper.validate_snapshot({"students": [student]}) is False
+
+
+def test_helper_snapshot_rejects_mailbox_and_message_routing_fields() -> None:
+    helper = _load()
+    for forbidden in ("mailbox_key", "globalKeySkrzynka", "apiGlobalKey"):
+        student = _base_student()
+        student["messages"] = [{forbidden: "routing-secret"}]
+        assert helper.validate_snapshot({"students": [student]}) is False
 
 
 def test_helper_snapshot_accepts_public_school_payload() -> None:
     helper = _load()
-    payload = {
-        "students": [
-            {
-                "student_id": "1",
-                "name": "Jan Kowalski",
-                "class_name": "5A",
-                "timetable": [{"przedmiot": "Matematyka"}],
-                "attendance": [],
-                "classification_periods": [{"id": 1, "numerOkresu": 1}],
-                "grades_by_period": {"1": {"ocenyPrzedmioty": []}},
-                "schoolwork": [{"id": 7, "typ": 4}],
-                "errors": {},
-            }
-        ]
-    }
-    assert helper.validate_snapshot(payload) is True
+    student = _base_student()
+    student.update(
+        {
+            "classification_periods": [{"id": 1, "numerOkresu": 1}],
+            "grades_by_period": {"1": {"ocenyPrzedmioty": []}},
+            "schoolwork": [{"id": 7, "typ": 4}],
+            "remarks": [],
+            "messages": [{"id": "public-hash", "temat": "Informacja"}],
+            "message_details": {"public-hash": {"tresc": "Treść"}},
+            "attendance_subjects": [],
+            "attendance_summary": {},
+            "attendance_by_subject": {},
+            "achievements": [],
+            "meetings": [],
+            "errors": {},
+        }
+    )
+    assert helper.validate_snapshot({"students": [student]}) is True
