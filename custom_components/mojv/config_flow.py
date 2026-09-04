@@ -22,15 +22,30 @@ from .const import (
     AUTH_BACKEND_HTTP,
     CONF_AUTH_BACKEND,
     CONF_DEMO_STUDENTS,
+    CONF_LESSON_END_MINUTES,
+    CONF_MEETING_LEAD_HOURS,
     CONF_MODE,
+    CONF_NOTIFICATION_TYPES,
+    CONF_NOTIFY_TARGETS,
     CONF_PASSWORD,
+    CONF_QUIET_HOURS_ENABLED,
+    CONF_QUIET_HOURS_END,
+    CONF_QUIET_HOURS_START,
+    CONF_SCHOOLWORK_LEAD_HOURS,
     CONF_USERNAME,
     DEFAULT_DEMO_STUDENTS,
+    DEFAULT_LESSON_END_MINUTES,
+    DEFAULT_MEETING_LEAD_HOURS,
+    DEFAULT_NOTIFICATION_TYPES,
+    DEFAULT_QUIET_HOURS_END,
+    DEFAULT_QUIET_HOURS_START,
+    DEFAULT_SCHOOLWORK_LEAD_HOURS,
     DOMAIN,
     MAX_DEMO_STUDENTS,
     MIN_DEMO_STUDENTS,
     MODE_DEMO,
     MODE_LIVE,
+    NOTIFICATION_TYPES,
 )
 from .helper_gateway import (
     HelperGateway,
@@ -40,12 +55,18 @@ from .helper_gateway import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_TIME_PATTERN = r"^(?:[01]\d|2[0-3]):[0-5]\d$"
 
 
 class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a mojV config flow."""
 
     VERSION = 2
+
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        """Return mojV options flow."""
+        return MojVOptionsFlow()
 
     async def async_step_user(self, user_input=None):
         """Choose live or demo setup."""
@@ -168,3 +189,69 @@ class MojVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=schema,
             errors=errors,
         )
+
+
+class MojVOptionsFlow(config_entries.OptionsFlow):
+    """Configure notification behavior without touching credentials."""
+
+    async def async_step_init(self, user_input=None):
+        """Manage notification options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        current = dict(self.config_entry.options)
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_NOTIFICATION_TYPES,
+                    default=current.get(
+                        CONF_NOTIFICATION_TYPES, list(DEFAULT_NOTIFICATION_TYPES)
+                    ),
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=list(NOTIFICATION_TYPES), multiple=True
+                    )
+                ),
+                vol.Optional(
+                    CONF_NOTIFY_TARGETS,
+                    default=current.get(CONF_NOTIFY_TARGETS, []),
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="notify", multiple=True)
+                ),
+                vol.Required(
+                    CONF_LESSON_END_MINUTES,
+                    default=current.get(
+                        CONF_LESSON_END_MINUTES, DEFAULT_LESSON_END_MINUTES
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=60)),
+                vol.Required(
+                    CONF_SCHOOLWORK_LEAD_HOURS,
+                    default=current.get(
+                        CONF_SCHOOLWORK_LEAD_HOURS, DEFAULT_SCHOOLWORK_LEAD_HOURS
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=336)),
+                vol.Required(
+                    CONF_MEETING_LEAD_HOURS,
+                    default=current.get(
+                        CONF_MEETING_LEAD_HOURS, DEFAULT_MEETING_LEAD_HOURS
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=336)),
+                vol.Required(
+                    CONF_QUIET_HOURS_ENABLED,
+                    default=current.get(CONF_QUIET_HOURS_ENABLED, False),
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    CONF_QUIET_HOURS_START,
+                    default=current.get(
+                        CONF_QUIET_HOURS_START, DEFAULT_QUIET_HOURS_START
+                    ),
+                ): vol.All(str, vol.Match(_TIME_PATTERN)),
+                vol.Required(
+                    CONF_QUIET_HOURS_END,
+                    default=current.get(
+                        CONF_QUIET_HOURS_END, DEFAULT_QUIET_HOURS_END
+                    ),
+                ): vol.All(str, vol.Match(_TIME_PATTERN)),
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)
