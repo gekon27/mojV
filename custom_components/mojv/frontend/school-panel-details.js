@@ -9,7 +9,7 @@ if (proto && !proto.__mojvDetailUxPatched) {
   const baseConnectedCallback = proto.connectedCallback;
   const baseStyles = proto._styles;
 
-  proto._detailPreview = function (value, limit = 160) {
+  proto._detailPreview = function (value, limit = 120) {
     const text = String(value || "").replace(/\s+/g, " ").trim();
     return text.length <= limit ? text : `${text.slice(0, limit - 1).trimEnd()}…`;
   };
