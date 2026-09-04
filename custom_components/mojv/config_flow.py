@@ -209,7 +209,9 @@ class MojVOptionsFlow(config_entries.OptionsFlow):
                     ),
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=list(NOTIFICATION_TYPES), multiple=True
+                        options=list(NOTIFICATION_TYPES),
+                        multiple=True,
+                        translation_key="notification_types",
                     )
                 ),
                 vol.Optional(
