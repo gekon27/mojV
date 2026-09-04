@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.14.0] - 2026-09-04
+
+- skorygowano horyzont planu do dokładnie czterech tygodni łącznie: poprzedni (`-1`), bieżący (`0`) oraz dwa kolejne (`+1`, `+2`); Core i browser fallback używają tego samego zakresu,
+- Plan otrzymał jawny stan **Przerwa** pomiędzy lekcjami, osobne stany wizualne i tekstowe **Teraz / Odbyta / Odwołana** oraz mocniej przygaszony wygląd lekcji zakończonych,
+- zakładki **Oceny** i **Wiadomości** są stałe i nie znikają przy pustych danych; Wiadomości pokazują neutralny pusty stan,
+- widok **Tematy** umożliwia sortowanie po dacie rosnąco/malejąco, a **Informacje** zostały przeniesione za Tematy,
+- dodano drukowanie planu, frekwencji i dedykowanego widoku statystyk z regułami `@media print`,
+- Terminarz zawsze pobiera dedykowane szczegóły dla obsługiwanych sprawdzianów/kartkówek/klasówek/zadań, dzięki czemu skrót z listy nie może zastąpić pełnej treści,
+- Terminarz pokazuje typ wpisu, przedmiot, nauczyciela, datę utworzenia gdy portal rozróżnia ją od terminu, termin wykonania/wydarzenia oraz opis; kliknięcie otwiera pełny, bezpieczny dialog szczegółów,
+- dla zadania domowego `terminOdpowiedzi` jest terminem wykonania, a odrębne `data` z payloadu szczegółowego może zostać zachowane jako data utworzenia/wpisu; dla sprawdzianu bez osobnego pola utworzenia mojV nie zgaduje wartości i pokazuje brak danych,
+- kalendarz **Terminarz szkolny** otrzymał te same bezpieczne metadane nauczyciela, daty utworzenia/terminu i opisu,
+- pełne opisy są czyszczone do tekstu i escapowane w UI; odpowiedzi ucznia, jego załączniki oraz auth/session/mailbox/routing fields pozostają poza publicznym payloadem,
+- helper **0.1.11** został opublikowany jako publiczny obraz multi-arch i zawsze wzbogaca obsługiwane wpisy Terminarza z dedykowanych endpointów szczegółów; publikacja potwierdziła manifest platform oraz anonimowy pull,
+- zachowano adaptacyjne odświeżanie LIVE: około 2 min po najbliższym końcu lekcji i maksymalnie 60 min poza taką granicą,
+- końcowy funkcjonalny gate przed release przechodzi 145 testów Python, 7 kontroli składni JavaScript, Hassfest i HACS.
+
 ## [0.13.0] - 2026-09-04
 
 - rozszerzono zakres planu lekcji w bezpośrednim HTTP do poprzedniego tygodnia, tygodnia bieżącego oraz czterech pełnych tygodni do przodu,
