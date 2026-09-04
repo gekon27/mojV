@@ -96,12 +96,19 @@ class MojVSchoolworkCalendar(MojVStudentEntity, CalendarEntity):
     def _event_from_item(item) -> CalendarEvent:
         summary = item.title or item.kind or "Termin szkolny"
         details = [f"Przedmiot: {item.subject}"] if item.subject else []
+        if item.teacher:
+            details.append(f"Nauczyciel: {item.teacher}")
+        if item.created_at:
+            details.append(f"Utworzone: {item.created_at:%d.%m.%Y %H:%M}")
+        if item.due_at:
+            details.append(f"Termin: {item.due_at:%d.%m.%Y %H:%M}")
         if item.description:
-            details.append(item.description)
+            details.append(f"Opis: {item.description}")
+        event_time = item.due_at or item.date
         return CalendarEvent(
             summary=summary,
-            start=item.date,
-            end=item.date + timedelta(hours=1),
+            start=event_time,
+            end=event_time + timedelta(hours=1),
             description="\n".join(details) or None,
         )
 
@@ -130,7 +137,7 @@ class MojVSchoolworkCalendar(MojVStudentEntity, CalendarEntity):
 
 
 class MojVMeetingsCalendar(MojVStudentEntity, CalendarEntity):
-    """Parent meetings and consultations."""
+    """Parent meeting or consultation."""
 
     _attr_name = "Zebrania i konsultacje"
     _attr_icon = "mdi:account-group-outline"
