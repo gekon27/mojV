@@ -14,6 +14,7 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
   const baseRenderDashboard = proto._renderDashboard;
   const baseRenderMessages = proto._renderMessages;
   const baseRenderAttendance = proto._renderAttendance;
+  const baseRenderAttendanceStats = proto._renderAttendanceStats;
   const baseStyles = proto._styles;
 
   proto._mojvEnsureView = function (views, view, afterId = "") {
@@ -90,6 +91,11 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
   proto._renderAttendance = function (student) {
     const base = baseRenderAttendance ? baseRenderAttendance.call(this, student) : "";
     return `<div class="mojv-print-toolbar"><button type="button" class="mojv-print-button" data-mojv-print="statistics">Drukuj statystyki</button></div>${base}`;
+  };
+
+  proto._renderAttendanceStats = function (student) {
+    const base = baseRenderAttendanceStats ? baseRenderAttendanceStats.call(this, student) : "";
+    return `<div class="mojv-print-toolbar"><button type="button" class="mojv-print-button" data-mojv-print="attendance-stats">Drukuj statystyki</button></div>${base}`;
   };
 
   proto._renderActiveView = function () {
