@@ -46,6 +46,11 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload mojV so notification option changes take effect atomically."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up mojV from a config entry."""
     mode = entry.data.get(CONF_MODE, MODE_DEMO)
@@ -80,16 +85,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator,
         entry.entry_id,
         demo_mode=mode == MODE_DEMO,
+        options=dict(entry.options),
     )
     await notifier.async_start()
     hass.data.setdefault(DATA_NOTIFIERS, {})[entry.entry_id] = notifier
 
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a mojV config entry."""
+    """Unload mojV config entry."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         notifier = hass.data.get(DATA_NOTIFIERS, {}).pop(entry.entry_id, None)
