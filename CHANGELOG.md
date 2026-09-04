@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.12.0] - 2026-09-04
+
+- naprawiono podwójne wpisy uczniów w School Hub: backend deduplikuje publiczne wiersze po stabilnym `student_id`, zachowuje deterministyczną kolejność i wybiera najświeższy snapshot bez ślepego łączenia pól z dwóch wpisów konfiguracji,
+- dodano uwierzytelniony, pełnoekranowy dashboard Home Assistant pod `/mojv-dashboard`; dashboard reuse’uje istniejący `mojv-school-panel`, ten sam bezpieczny WebSocket `mojv/panel` i standardowe logowanie Home Assistant,
+- School Hub otrzymał akcję **Otwórz dashboard** bez uruchamiania dodatkowego pollera ani osobnego API,
+- Terminarz, zadania domowe, sprawdziany i kartkówki pokazują krótki preview treści, a kliknięcie otwiera pełny bezpieczny opis dostępny LIVE,
+- wpisy „Ważne dzisiaj” mogą zachować whitelistowany dłuższy opis z normalizowanego payloadu i korzystają z tego samego dialogu szczegółów,
+- dialog szczegółów obsługuje klawiaturę, `Esc`, przywracanie fokusu, zamknięcie tłem oraz mobilny wariant bottom-sheet; surowy zdalny HTML nie jest wstrzykiwany do DOM,
+- Plan rozróżnia stany `current`, `completed`, `upcoming` i `cancelled`; użytkownik widzi tekstowe znaczniki **Teraz**, **Odbyta** i **Odwołana**, więc semantyka nie zależy wyłącznie od koloru,
+- zastępstwo pozostaje niezależnym badge’em i może występować równocześnie ze stanem czasowym lekcji,
+- klasy stanów są stosowane w planie dnia i tygodniowym, a ticker lokalnie aktualizuje je wraz z upływem czasu bez requestów do portalu,
+- dodano czysty `panel_students.py` oraz testy RED→GREEN deduplikacji, pełnych opisów, dialogów szczegółów, stanów lekcji, dashboardu i pokrycia CI,
+- CI sprawdza składnię wszystkich siedmiu wykonywanych modułów JavaScript School Hub/dashboardu,
+- pełny pre-release gate przechodzi 127 testów Python, kontrolę spójności wersji i zastrzeżonego nazewnictwa, Hassfest oraz HACS,
+- granica bezpieczeństwa pozostaje bez zmian: dashboard i szczegóły nie otrzymują credentials, cookies, session/mailbox/routing keys, danych rodziców ani wrażliwego profilu ucznia,
+- helper pozostaje w wersji `0.1.9`; zmiany 0.12.0 nie wymagają nowego runtime browser fallback.
+
 ## [0.11.0] - 2026-09-04
 
 - rozszerzono bezpieczną warstwę LIVE o dni wolne, usprawiedliwienia, nauczycieli, publiczne informacje o szkole, szczęśliwy numerek, „ważne dzisiaj”, wychowawców i zrealizowane tematy lekcji,
