@@ -142,6 +142,84 @@ class LuckyNumber:
 
 
 @dataclass(frozen=True, slots=True)
+class FreeDay:
+    """Named school-free date range."""
+
+    start: datetime
+    end: datetime
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
+class AttendanceExcuse:
+    """One safe attendance-excuse status without portal identifiers."""
+
+    date: datetime
+    lesson_number: int | None = None
+    status: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class AttendanceExcuses:
+    """Attendance excuse capability and safe status entries."""
+
+    active: bool = False
+    entries: tuple[AttendanceExcuse, ...] = ()
+    blocked: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Teacher:
+    """Teacher and subject mapping safe to expose in Home Assistant."""
+
+    name: str
+    subject: str = ""
+    homeroom: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class HomeroomTeacher:
+    """Student homeroom teacher without message-routing metadata."""
+
+    name: str
+    primary: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class SchoolInfo:
+    """Public school contact information."""
+
+    name: str
+    city: str = ""
+    address: str = ""
+    website: str = ""
+    email: str = ""
+    directors: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ImportantToday:
+    """Portal-provided important-today entry."""
+
+    subject: str = ""
+    kind: str = ""
+    title: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class CompletedLesson:
+    """A completed lesson topic with a public stable identifier."""
+
+    lesson_id: str
+    date: datetime
+    subject: str
+    teacher: str = ""
+    topic: str = ""
+    lesson_number: int = 0
+    online_url: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class StudentSnapshot:
     """Current data for one student."""
 
@@ -156,6 +234,13 @@ class StudentSnapshot:
     achievements: tuple[Achievement, ...] = ()
     meetings: tuple[Meeting, ...] = ()
     lucky_number: LuckyNumber | None = None
+    free_days: tuple[FreeDay, ...] = ()
+    excuses: AttendanceExcuses = AttendanceExcuses()
+    teachers: tuple[Teacher, ...] = ()
+    school_info: SchoolInfo | None = None
+    important_today: tuple[ImportantToday, ...] = ()
+    homeroom_teachers: tuple[HomeroomTeacher, ...] = ()
+    completed_lessons: tuple[CompletedLesson, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
