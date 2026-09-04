@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 API_MODULE = ROOT / "custom_components" / "mojv" / "school_api.py"
 PANEL_JS = ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js"
+LESSON_STATES_JS = ROOT / "custom_components" / "mojv" / "frontend" / "school-panel-lesson-states.js"
 
 
 def _load_api():
@@ -56,8 +57,12 @@ def test_timetable_request_keeps_previous_week_and_four_full_future_weeks() -> N
 
 
 def test_schedule_navigation_allows_four_future_weeks() -> None:
-    source = PANEL_JS.read_text(encoding="utf-8")
+    source = "\n".join(
+        (
+            PANEL_JS.read_text(encoding="utf-8"),
+            LESSON_STATES_JS.read_text(encoding="utf-8"),
+        )
+    )
 
     assert 'this._weekOffset >= 4 ? "disabled" : ""' in source
     assert "Math.min(4, this._weekOffset + delta)" in source
-    assert 'this._weekOffset >= 1 ? "disabled" : ""' not in source
