@@ -125,13 +125,12 @@ def parse_schoolwork(
             continue
 
         # Plus homework details expose ``data`` separately from
-        # ``terminOdpowiedzi``. Treat that detail-level value as the entry
-        # timestamp only when an explicit homework deadline exists. For tests
-        # and quizzes ``data`` is the event date, so we do not invent a
-        # creation timestamp.
+        # ``terminOdpowiedzi``. SchoolApiClient and the browser helper may
+        # merge the detail into the list row before this parser runs, so the
+        # entry timestamp can legitimately live in either mapping.
         created_at = None
         if type_id == 4 and explicit_due_raw:
-            created_at = _parse_date(detail.get("data"))
+            created_at = _parse_date(detail.get("data") or item.get("data"))
 
         subject = str(
             detail.get("przedmiotNazwa") or item.get("przedmiotNazwa") or ""
