@@ -2,11 +2,11 @@
 
 ![mojV](icon.svg)
 
-Integracja Home Assistant dla danych szkolnych: plan lekcji, aktualna i następna lekcja, frekwencja, oceny, terminarz, uwagi i pochwały, wiadomości, osiągnięcia, zebrania oraz automatyzacje.
+Integracja Home Assistant dla danych szkolnych: plan lekcji, aktualna i następna lekcja, frekwencja, oceny, terminarz, uwagi i pochwały, wiadomości, osiągnięcia, zebrania, automatyzacje i powiadomienia.
 
 ## Status
 
-**HACS 0.9.0 — LIVE + panel Szkoła + samodzielny mojV Auth Helper 0.1.8.**
+**HACS 0.10.0 — LIVE + School Hub + Notification Engine v2 + samodzielny mojV Auth Helper 0.1.8.**
 
 Projekt jest rozdzielony na dwa niezależne repozytoria:
 
@@ -27,7 +27,7 @@ Zasada pozostaje stała:
 
 ## Aktualny zakres LIVE
 
-W HACS 0.9.0 działają rzeczywiste dane:
+W HACS 0.10.0 działają rzeczywiste dane:
 
 - automatyczne wykrywanie 1..N dzieci,
 - plan lekcji,
@@ -37,22 +37,24 @@ W HACS 0.9.0 działają rzeczywiste dane:
 - zastępstwa i odwołane lekcje,
 - frekwencja bieżąca,
 - rozszerzone statystyki frekwencji ogólne i per przedmiot,
-- oceny cząstkowe,
+- oceny cząstkowe wraz z wagą, gdy backend ją zwraca,
 - oceny proponowane i okresowe/końcowe,
 - terminarz: sprawdziany, kartkówki, klasówki i zadania domowe,
 - uwagi i pochwały,
 - wiadomości wraz z treścią szczegółową,
 - osiągnięcia,
 - zebrania i konsultacje,
-- alerty Home Assistant,
-- panel **Szkoła**.
+- alerty i zdarzenia Home Assistant,
+- panel boczny **Szkoła / School Hub**.
 
 Widoki zależne od dodatkowych modułów pojawiają się dopiero wtedy, gdy backend rzeczywiście zwróci dane. mojV nie tworzy fikcyjnych rekordów zastępczych.
+
+Model zawiera przygotowane miejsce na „szczęśliwy numerek”, ale HACS 0.10.0 **nie pokazuje go**, ponieważ produkcyjny builder nie ma jeszcze potwierdzonego i przetestowanego źródła LIVE. Dane nie są zgadywane.
 
 ## Instalacja HACS
 
 1. W HACS dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories.
-2. Wybierz `mojV` i zainstaluj wersję **0.9.0** lub nowszą.
+2. Wybierz `mojV` i zainstaluj wersję **0.10.0** lub nowszą.
 3. Uruchom ponownie Home Assistant.
 4. Otwórz **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
 5. Podaj dane konta szkolnego.
@@ -81,27 +83,34 @@ Home Assistant pobiera gotowy publiczny obraz:
 
 Obraz jest publikowany jako manifest multi-arch dla `linux/amd64` oraz `linux/arm64` (`aarch64`). Publikacja 0.1.8 została zweryfikowana także przez anonimowy pull bez poświadczeń GHCR.
 
-## Bezpieczeństwo helpera i transportu
+## School Hub — panel boczny „Szkoła”
 
-- Chromium, ChromeDriver i Xvfb działają w osobnym kontenerze,
-- helper nie zapisuje hasła,
-- cookies, tokeny, klucze sesji, mailbox keys i identyfikatory routingu pozostają wewnątrz warstwy transportu,
-- surowe identyfikatory routingu wiadomości nie są przekazywane do Home Assistant; publiczne ID wiadomości jest stabilnym hashem,
-- integracja HACS otrzymuje wyłącznie publiczny snapshot danych szkolnych,
-- Core rekurencyjnie sprawdza payload helpera pod kątem niedozwolonych pól uwierzytelniających i routingu,
-- helper nie wystawia portu do LAN,
-- komunikacja odbywa się w wewnętrznej sieci Home Assistant,
-- lokalizacja zapisywana w diagnostyce nie zawiera query string,
-- screenshot diagnostyczny pozostaje lokalny i przed zapisem ma czyszczone wartości pól formularza,
-- awaria pojedynczego modułu danych nie zatrzymuje pozostałych modułów.
+Panel jest lekką aplikacją frontendową. Główny DOM jest tworzony raz, a zegar i postęp lekcji aktualizują się lokalnie bez ponownego logowania. Zmiana dziecka, widoku lub tygodnia korzysta z danych już pobranych do pamięci.
 
-## Panel „Szkoła”
+### Pulpit
 
-Panel jest lekką aplikacją frontendową. Główny DOM jest tworzony raz, a zegar i postęp lekcji aktualizują się lokalnie co 10 sekund. Zmiana dziecka, widoku lub tygodnia korzysta z danych już pobranych do pamięci i nie powoduje kolejnego logowania.
+Nowy domyślny widok **Pulpit** zbiera najważniejsze dane ucznia w jednym miejscu:
 
-Dostępne widoki:
+- aktualna lekcja i lokalny licznik minut do końca,
+- numer lekcji, sala, nauczyciel i obecność,
+- następna lekcja,
+- liczba nieprzeczytanych wiadomości,
+- ostatnia ocena wraz z wagą, jeżeli jest dostępna,
+- ogólna frekwencja,
+- najbliższy sprawdzian / kartkówka / zadanie,
+- najbliższe zebranie,
+- ostatnia uwaga lub pochwała,
+- ostatnie osiągnięcie,
+- liczba zapisanych powiadomień,
+- ostatnia wiadomość,
+- stan ostatniej synchronizacji.
 
-- **Dzisiaj** — aktualna/następna lekcja, sala, nauczyciel, numer lekcji, obecność, postęp i najbliższy alert,
+### Widoki
+
+Dostępne są:
+
+- **Pulpit** — agregat najważniejszych informacji,
+- **Dzisiaj** — aktualna/następna lekcja, plan dnia, obecność i alerty,
 - **Plan** — tydzień, wspólne sloty godzinowe, bieżąca linia czasu, zastępstwa i anulowania,
 - **Frekwencja** — podsumowanie stanów i ostatnie wpisy,
 - **Oceny** — oceny cząstkowe i klasyfikacyjne,
@@ -110,11 +119,101 @@ Dostępne widoki:
 - **Wiadomości** — odebrane wiadomości i ich treść,
 - **Statystyki** — frekwencja ogólna i per przedmiot,
 - **Osiągnięcia** — wyróżnienia i wyniki,
-- **Zebrania** — spotkania, miejsce, opis i bezpieczne linki online.
+- **Zebrania** — spotkania, miejsce, opis i bezpieczne linki online,
+- **Aktywność** — jedna chronologiczna oś ocen, klasyfikacji, uwag/pochwał, wiadomości, terminarza, zebrań, osiągnięć i frekwencji,
+- **Powiadomienia** — lokalna historia Notification Engine v2.
 
-Widoki **Oceny**, **Terminarz**, **Uwagi**, **Wiadomości**, **Statystyki**, **Osiągnięcia** i **Zebrania** są dynamiczne i są pokazywane tylko wtedy, gdy istnieją rzeczywiste dane dla danego ucznia.
+Zakładki danych dodatkowych są dynamiczne. Nawigacja pokazuje badge m.in. dla nieprzeczytanych wiadomości, nadchodzących terminów, zebrań i historii alertów.
 
-Układ jest responsywny dla desktopu, tabletu i telefonu.
+Układ jest responsywny dla desktopu, tabletu i telefonu. Frontend nie tworzy własnego pollera portalu.
+
+## Notification Engine v2
+
+mojV wykrywa nowe dane i istotne zmiany pomiędzy kolejnymi snapshotami. Pierwsza synchronizacja prawdziwego konta tworzy **baseline** i nie generuje lawiny powiadomień dla starych ocen, wiadomości czy uwag.
+
+Obsługiwane typy alertów:
+
+- nowa ocena,
+- zmiana oceny proponowanej lub końcowej,
+- nowa uwaga,
+- nowa pochwała,
+- nowa wiadomość,
+- nieobecność,
+- spóźnienie,
+- odwołana lekcja,
+- zastępstwo,
+- zmiana godziny, sali lub nauczyciela,
+- zbliżający się koniec lekcji,
+- nowy sprawdzian / kartkówka / zadanie,
+- zbliżający się termin,
+- nowe zebranie,
+- zbliżające się zebranie,
+- nowe osiągnięcie.
+
+### Kanały
+
+Dla zaakceptowanego alertu mojV zawsze może wykorzystać natywne mechanizmy Home Assistant:
+
+- **persistent notification**,
+- zdarzenie `mojv_notification` na event bus,
+- zachowane kompatybilne zdarzenia starszych wersji dla ocen, uwag i frekwencji.
+
+Dodatkowo użytkownik może wybrać konkretne encje `notify`, do których mojV wyśle push. Integracja nie wybiera automatycznie wszystkich telefonów.
+
+### Ustawienia
+
+Otwórz wpis integracji mojV w **Ustawienia → Urządzenia i usługi** i wybierz **Konfiguruj**.
+
+Można ustawić:
+
+- aktywne typy powiadomień,
+- docelowe encje `notify`,
+- ile minut przed końcem lekcji ma pojawić się przypomnienie — domyślnie **5 min**,
+- ile godzin przed sprawdzianem/zadaniem — domyślnie **24 h**,
+- ile godzin przed zebraniem — domyślnie **24 h**,
+- opcjonalne godziny ciszy.
+
+Godziny ciszy wyciszają **tylko push**. Historia, persistent notification i event bus nadal rejestrują alert.
+
+Dla przypomnień czasowych działa lokalny ticker co **1 minutę**. Nie wykonuje dodatkowego logowania ani requestu do portalu — korzysta wyłącznie z ostatniego snapshotu coordinatora.
+
+### Historia i deduplikacja
+
+- maksymalnie **200** najnowszych rekordów na wpis konfiguracji,
+- najnowsze wpisy są na początku,
+- każdy alert ma stabilny `event_id`,
+- ponowne odświeżenie lub restart nie powinny powielać już zapisanego alertu,
+- historia jest filtrowana per uczeń w School Hub.
+
+## Zdarzenia Home Assistant
+
+Główny event v2:
+
+- `mojv_notification`
+
+Dla zgodności zachowane są również:
+
+- `mojv_lesson_late`,
+- `mojv_lesson_absent`,
+- `mojv_new_grade`,
+- `mojv_new_remark`.
+
+Payload `mojv_notification` zawiera publiczne pola, m.in. `event_id`, `kind`, `priority`, `student_id`, nazwę ucznia, tytuł, treść i czas. Nie zawiera sekretów ani identyfikatorów routingu używanych do autoryzacji.
+
+## Bezpieczeństwo helpera, panelu i powiadomień
+
+- Chromium, ChromeDriver i Xvfb działają w osobnym kontenerze,
+- helper nie zapisuje hasła,
+- cookies, tokeny, klucze sesji, mailbox keys i identyfikatory routingu pozostają wewnątrz warstwy transportu,
+- surowe identyfikatory routingu wiadomości nie są przekazywane do Home Assistant; publiczne ID wiadomości jest stabilnym hashem,
+- integracja HACS otrzymuje wyłącznie publiczny snapshot danych szkolnych,
+- Core rekurencyjnie sprawdza payload helpera pod kątem niedozwolonych pól uwierzytelniających i routingu,
+- historia powiadomień oraz payload panelu przechowują tylko dane publiczne potrzebne do prezentacji alertu,
+- helper nie wystawia portu do LAN,
+- komunikacja odbywa się w wewnętrznej sieci Home Assistant,
+- lokalizacja zapisywana w diagnostyce nie zawiera query string,
+- screenshot diagnostyczny pozostaje lokalny i przed zapisem ma czyszczone wartości pól formularza,
+- awaria pojedynczego modułu danych lub pojedynczego targetu push nie zatrzymuje pozostałych modułów/odbiorców.
 
 ## Encje Home Assistant
 
@@ -133,15 +232,6 @@ Dla każdego ucznia powstają m.in.:
 
 Dodatkowo dostępny jest wspólny sensor liczby wykrytych uczniów.
 
-## Zdarzenia
-
-mojV publikuje zdarzenia Home Assistant:
-
-- `mojv_lesson_late`,
-- `mojv_lesson_absent`,
-- `mojv_new_grade`,
-- `mojv_new_remark`.
-
 ## Wydajność
 
 - niezależne moduły są pobierane oddzielnie,
@@ -149,15 +239,16 @@ mojV publikuje zdarzenia Home Assistant:
 - błąd jednego modułu nie anuluje pozostałych,
 - jeden `snapshot_builder` normalizuje dane niezależnie od backendu logowania,
 - frontend nie odpytuje portalu przy lokalnym przełączaniu widoków,
+- minutowy ticker powiadomień ocenia wyłącznie dane znajdujące się już w pamięci,
 - Chromium pozostaje poza procesem Home Assistant Core.
 
 ## Diagnostyka
 
 ### Integracja
 
-W **Ustawienia → System → Dzienniki** wyszukaj `mojv`. Przy starcie HACS 0.9.0 powinien pojawić się wpis:
+W **Ustawienia → System → Dzienniki** wyszukaj `mojv`. Przy starcie HACS 0.10.0 powinien pojawić się wpis:
 
-`mojV integration version=0.9.0`
+`mojV integration version=0.10.0`
 
 ### Helper
 
@@ -181,11 +272,17 @@ Nie publikuj loginu, hasła, cookies, tokenów, kluczy sesji ani kluczy routingu
 - `parsers/` — normalizacja danych szkolnych,
 - `snapshot_builder.py` — wspólny snapshot,
 - `client.py` — klient integracji,
-- `coordinator.py` — odświeżanie,
+- `coordinator.py` — odświeżanie danych szkolnych,
 - `models.py` — model danych,
 - `logic.py` — logika czasu i frekwencji,
-- `panel.py` + `frontend/school-panel.js` + `frontend/school-panel-live.js` — panel Szkoła,
-- `notifications.py` — alerty i eventy,
+- `notification_rules.py` — czyste reguły różnicowe i czasowe,
+- `notification_history.py` — ograniczona, deduplikowana historia,
+- `notifications.py` — kanały HA, push i lokalny timer,
+- `config_flow.py` — logowanie oraz Options Flow powiadomień,
+- `panel.py` — bezpieczny WebSocket payload School Hub,
+- `frontend/school-panel.js` — bazowy panel,
+- `frontend/school-panel-live.js` — widoki rozszerzonych modułów LIVE,
+- `frontend/school-panel-hub.js` — Pulpit, Aktywność, Powiadomienia i badge,
 - `sensor.py`, `binary_sensor.py`, `calendar.py` — encje HA.
 
 ### `gekon27/mojv-auth-helper` — Home Assistant App
@@ -197,7 +294,7 @@ Osobne repo zawiera metadata App Store, Dockerfile, Chromium/Xvfb runtime, rozsz
 Repo HACS uruchamia:
 
 - kompilację i testy Python,
-- kontrolę składni obu warstw panelu JavaScript,
+- kontrolę składni wszystkich trzech warstw panelu JavaScript,
 - Hassfest,
 - HACS validation,
 - kontrolę spójności `manifest.json`, README i CHANGELOG.
