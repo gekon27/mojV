@@ -3,19 +3,22 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from datetime import time
+from datetime import time, timedelta
 from typing import Any
 
 from homeassistant.components import persistent_notification
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_NOTIFICATION_TYPES,
     CONF_NOTIFY_TARGETS,
     CONF_QUIET_HOURS_ENABLED,
     CONF_QUIET_HOURS_END,
     CONF_QUIET_HOURS_START,
+    DEFAULT_NOTIFICATION_TYPES,
     DEFAULT_QUIET_HOURS_END,
     DEFAULT_QUIET_HOURS_START,
     DOMAIN,
@@ -67,6 +70,7 @@ class MojVNotificationManager:
         self.history = NotificationHistory(hass, entry_id)
         self.previous_snapshot = None
         self._remove_listener: Callable[[], None] | None = None
+        self._remove_time_listener: Callable[[], None] | None = None
 
     async def async_start(self) -> None:
         """Load state, establish a LIVE baseline and observe coordinator updates."""
@@ -83,34 +87,67 @@ class MojVNotificationManager:
             self.previous_snapshot = self.coordinator.data
 
         await self.store.async_save({"initialized": True})
-        await self._async_process(include_changes=False)
+        await self._async_process_time()
         self._remove_listener = self.coordinator.async_add_listener(self._schedule_process)
+        self._remove_time_listener = async_track_time_interval(
+            self.hass,
+            self._schedule_time_process,
+            timedelta(minutes=1),
+        )
 
     def async_stop(self) -> None:
-        """Stop observing coordinator updates."""
+        """Stop observing coordinator updates and the local reminder ticker."""
         if self._remove_listener:
             self._remove_listener()
             self._remove_listener = None
+        if self._remove_time_listener:
+            self._remove_time_listener()
+            self._remove_time_listener = None
 
     def _schedule_process(self) -> None:
         self.hass.async_create_task(self._async_process())
 
-    async def _async_process(self, *, include_changes: bool = True) -> None:
-        """Evaluate current coordinator data and deliver unseen candidates."""
+    def _schedule_time_process(self, _now=None) -> None:
+        """Schedule time-only checks without refreshing school data."""
+        self.hass.async_create_task(self._async_process_time())
+
+    def _is_enabled(self, candidate: NotificationCandidate) -> bool:
+        """Return whether a candidate kind is enabled in config entry options."""
+        enabled = set(
+            self.options.get(CONF_NOTIFICATION_TYPES, DEFAULT_NOTIFICATION_TYPES) or ()
+        )
+        return candidate.kind in enabled
+
+    async def _async_process(self) -> None:
+        """Evaluate a coordinator update and deliver unseen enabled candidates."""
         now = dt_util.now()
         current = self.coordinator.data
-        candidates: list[NotificationCandidate] = []
-
-        if include_changes:
-            candidates.extend(
-                build_change_candidates(self.previous_snapshot, current, now)
-            )
+        candidates: list[NotificationCandidate] = list(
+            build_change_candidates(self.previous_snapshot, current, now)
+        )
         for snapshot in current.students:
             candidates.extend(build_time_candidates(snapshot, now, self.options))
 
+        # Only coordinator-driven processing advances the difference baseline.
         self.previous_snapshot = current
+        await self._async_accept_candidates(candidates, now)
+
+    async def _async_process_time(self) -> None:
+        """Evaluate local time windows without portal I/O or baseline mutation."""
+        now = dt_util.now()
+        candidates: list[NotificationCandidate] = []
+        for snapshot in self.coordinator.data.students:
+            candidates.extend(build_time_candidates(snapshot, now, self.options))
+        await self._async_accept_candidates(candidates, now)
+
+    async def _async_accept_candidates(
+        self,
+        candidates: list[NotificationCandidate],
+        now,
+    ) -> None:
+        """Filter, deduplicate, persist and deliver public candidates."""
         for candidate in candidates:
-            if await self.history.async_append(candidate):
+            if self._is_enabled(candidate) and await self.history.async_append(candidate):
                 await self._deliver(candidate, now)
 
     async def _deliver(self, candidate: NotificationCandidate, now) -> None:
