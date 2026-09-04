@@ -13,7 +13,7 @@ API_MODULE = MOJV / "school_api.py"
 HUB_JS = FRONTEND / "school-panel-hub.js"
 LESSON_STATES_JS = FRONTEND / "school-panel-lesson-states.js"
 DETAILS_JS = FRONTEND / "school-panel-details.js"
-PANEL_BASE = MOJV / "panel_base.py"
+PANEL_PY = MOJV / "panel.py"
 CALENDAR_PY = MOJV / "calendar.py"
 
 
@@ -180,7 +180,7 @@ def test_term_calendar_uses_full_description_in_detail_overlay() -> None:
 
 def test_term_calendar_exposes_complete_schoolwork_metadata() -> None:
     details = DETAILS_JS.read_text(encoding="utf-8")
-    panel = PANEL_BASE.read_text(encoding="utf-8")
+    panel = PANEL_PY.read_text(encoding="utf-8")
     calendar = CALENDAR_PY.read_text(encoding="utf-8")
 
     for token in ("item.teacher", "item.created_at", "item.due_at"):
