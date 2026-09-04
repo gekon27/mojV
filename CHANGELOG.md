@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.11.0] - 2026-09-04
+
+- rozszerzono bezpieczną warstwę LIVE o dni wolne, usprawiedliwienia, nauczycieli, publiczne informacje o szkole, szczęśliwy numerek, „ważne dzisiaj”, wychowawców i zrealizowane tematy lekcji,
+- nowe moduły są pobierane niezależnie z izolacją błędów; awaria pojedynczego endpointu nie blokuje pozostałych danych ucznia,
+- wspólny model i `snapshot_builder` przekazują nowe moduły identycznie dla lekkiego HTTP i browser fallback,
+- samodzielny **mojV Auth Helper 0.1.9** uzyskał parity dla nowych modułów przy zachowaniu granicy bezpieczeństwa i obsługi 1..N dzieci,
+- helper 0.1.9 został opublikowany jako publiczny obraz multi-arch `amd64` + `arm64`; pipeline potwierdził manifest platform i anonimowy pull bez poświadczeń GHCR,
+- wrażliwy profil ucznia i zdjęcie pozostają poza publicznym snapshotem, panelem i powierzchnią encji,
+- rozszerzono `sensor.py` do 33 bazowych sensorów per uczeń oraz dynamicznych sensorów frekwencji/ocen per przedmiot i ocen per okres klasyfikacyjny,
+- rozszerzono `binary_sensor.py` do 8 praktycznych flag per uczeń: lekcja trwa/kończy się, nieobecność, spóźnienie, wiadomości, pilny termin, pilne zebranie i „ważne dzisiaj”,
+- dodano trzy kalendarze: plan lekcji, sprawdziany/zadania oraz zebrania,
+- School Hub otrzymał widoki **Informacje** i **Tematy**, a Pulpit pokazuje dodatkowo szczęśliwy numerek, ważne dzisiaj i następny dzień wolny,
+- rozdzielono duży kod panelu na stabilne warstwy `panel_base.py` + `panel.py` oraz `school-panel-hub-base.js` + `school-panel-hub.js`, bez zmiany istniejących widoków Pulpit/Aktywność/Powiadomienia,
+- CI sprawdza składnię wszystkich czterech wykonywanych modułów JavaScript panelu,
+- pełny zestaw Core przechodzi 109 testów Python, kontrolę zastrzeżonego nazewnictwa, Hassfest i HACS,
+- README, manifest i changelog zsynchronizowane do `0.11.0`; dokumentacja wskazuje opublikowany helper `0.1.9`.
+
 ## [0.10.0] - 2026-09-04
 
 - przebudowano panel boczny **Szkoła** do pełnego **School Hub** z domyślnym widokiem **Pulpit**,
