@@ -90,7 +90,13 @@ def build_student_snapshot(
 
     raw_schoolwork = parse_schoolwork(schoolwork, schoolwork_details)
     normalized_schoolwork: tuple[SchoolWork, ...] = tuple(
-        replace(item, date=_localize(item.date, timezone)) for item in raw_schoolwork
+        replace(
+            item,
+            date=_localize(item.date, timezone),
+            created_at=_localize(item.created_at, timezone),
+            due_at=_localize(item.due_at, timezone),
+        )
+        for item in raw_schoolwork
     )
 
     raw_remarks = parse_remarks(remarks)
