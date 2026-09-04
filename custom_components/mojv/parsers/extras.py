@@ -171,7 +171,7 @@ def parse_school_info(payload: Any) -> SchoolInfo | None:
 
 
 def parse_important_today(payload: Any) -> tuple[ImportantToday, ...]:
-    """Parse portal-provided important-today labels."""
+    """Parse portal-provided important-today labels and safe detail text."""
     result: list[ImportantToday] = []
     for row in _rows(payload, "wazneDzisiaj"):
         title = text(row.get("nazwa") or row.get("tytul"))
@@ -182,6 +182,12 @@ def parse_important_today(payload: Any) -> tuple[ImportantToday, ...]:
                 subject=text(row.get("przedmiot")),
                 kind=text(row.get("nazwaZdarzenia") or row.get("rodzaj")),
                 title=title,
+                description=text(
+                    row.get("opis")
+                    or row.get("tresc")
+                    or row.get("szczegoly")
+                    or row.get("podtytul")
+                ),
             )
         )
     return tuple(result)
