@@ -6,20 +6,23 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
-from .messages_api import MessagesApiClient
-
 
 class JsonTransport(Protocol):
-    """Minimal transport required by the school API client."""
-
     async def get_json(self, path: str, params: dict[str, Any]) -> Any:
         """Return JSON data for one authenticated request."""
 
 
+class MessagesClient(Protocol):
+    async def fetch(
+        self,
+        city: str,
+        mailbox_key: str,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        """Return inbox metadata and detail payloads for one mailbox."""
+
+
 @dataclass(frozen=True, slots=True)
 class StudentContext:
-    """Authenticated routing data for one student."""
-
     student_id: str
     name: str
     class_name: str
@@ -32,8 +35,6 @@ class StudentContext:
 
 @dataclass(slots=True)
 class RawStudentBundle:
-    """Raw module payloads collected for one student."""
-
     student: StudentContext
     timetable: Any = None
     attendance: Any = None
@@ -59,7 +60,7 @@ class SchoolApiClient:
         self,
         transport: JsonTransport,
         *,
-        messages: MessagesApiClient | None = None,
+        messages: MessagesClient | None = None,
     ) -> None:
         self._transport = transport
         self._messages = messages
@@ -97,9 +98,7 @@ class SchoolApiClient:
                 f"{student.base_url}/api/FrekwencjaStatystyki",
                 {**common, "idPrzedmiot": -1},
             ),
-            "remarks": self._transport.get_json(
-                f"{student.base_url}/api/Uwagi", common
-            ),
+            "remarks": self._transport.get_json(f"{student.base_url}/api/Uwagi", common),
             "schoolwork": self._transport.get_json(
                 f"{student.base_url}/api/SprawdzianyZadaniaDomowe",
                 {
@@ -136,15 +135,10 @@ class SchoolApiClient:
         )
         return bundle
 
-    async def _fetch_grades(
-        self,
-        student: StudentContext,
-        bundle: RawStudentBundle,
-    ) -> None:
+    async def _fetch_grades(self, student: StudentContext, bundle: RawStudentBundle) -> None:
         periods = bundle.classification_periods
         if not student.journal_id or not isinstance(periods, list):
             return
-
         period_ids = tuple(
             str(row.get("id"))
             for row in periods
@@ -152,14 +146,10 @@ class SchoolApiClient:
         )
         if not period_ids:
             return
-
         requests = tuple(
             self._transport.get_json(
                 f"{student.base_url}/api/Oceny",
-                {
-                    "key": student.session_key,
-                    "idOkresKlasyfikacyjny": period_id,
-                },
+                {"key": student.session_key, "idOkresKlasyfikacyjny": period_id},
             )
             for period_id in period_ids
         )
@@ -202,16 +192,12 @@ class SchoolApiClient:
             else:
                 bundle.attendance_by_subject[subject_id] = result
 
-    async def _fetch_messages(
-        self,
-        student: StudentContext,
-        bundle: RawStudentBundle,
-    ) -> None:
+    async def _fetch_messages(self, student: StudentContext, bundle: RawStudentBundle) -> None:
         if self._messages is None or not student.city or not student.mailbox_key:
             return
         try:
             inbox, details = await self._messages.fetch(student.city, student.mailbox_key)
-        except Exception as err:  # transport-specific errors stay isolated
+        except Exception as err:
             bundle.errors["messages"] = self._error_text(err)
             return
         bundle.messages = inbox
@@ -247,5 +233,4 @@ class SchoolApiClient:
 
     @staticmethod
     def _error_text(error: Exception) -> str:
-        """Return short diagnostic text without request parameters or auth data."""
         return type(error).__name__
