@@ -1,4 +1,4 @@
-"""Four-week timetable horizon contracts."""
+"""Four-week total timetable horizon contracts."""
 from __future__ import annotations
 
 import asyncio
@@ -31,7 +31,7 @@ class FakeTransport:
         return []
 
 
-def test_timetable_request_keeps_previous_week_and_four_full_future_weeks() -> None:
+def test_timetable_request_keeps_one_previous_current_and_two_future_weeks() -> None:
     api_mod = _load_api()
     transport = FakeTransport()
     client = api_mod.SchoolApiClient(transport)
@@ -52,11 +52,11 @@ def test_timetable_request_keeps_previous_week_and_four_full_future_weeks() -> N
 
     _, params = next(call for call in transport.calls if call[0].endswith("/api/PlanZajec"))
     assert params["dataOd"] == "2026-08-24T00:00:00.000Z"
-    assert params["dataDo"] == "2026-10-04T23:59:59.999Z"
+    assert params["dataDo"] == "2026-09-20T23:59:59.999Z"
     assert params["zakresDanych"] == "2"
 
 
-def test_schedule_navigation_allows_four_future_weeks() -> None:
+def test_schedule_navigation_allows_two_future_weeks() -> None:
     source = "\n".join(
         (
             PANEL_JS.read_text(encoding="utf-8"),
@@ -64,5 +64,5 @@ def test_schedule_navigation_allows_four_future_weeks() -> None:
         )
     )
 
-    assert 'this._weekOffset >= 4 ? "disabled" : ""' in source
-    assert "Math.min(4, this._weekOffset + delta)" in source
+    assert 'this._weekOffset >= 2 ? "disabled" : ""' in source
+    assert "Math.min(2, this._weekOffset + delta)" in source
