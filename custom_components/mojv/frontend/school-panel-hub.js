@@ -12,10 +12,23 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
   const baseAvailableViews = proto._availableViews;
   const baseRenderActiveView = proto._renderActiveView;
   const baseRenderDashboard = proto._renderDashboard;
+  const baseRenderMessages = proto._renderMessages;
+  const baseRenderAttendance = proto._renderAttendance;
   const baseStyles = proto._styles;
+
+  proto._mojvEnsureView = function (views, view, afterId = "") {
+    if (views.some(([id]) => id === view[0])) return views;
+    const index = afterId ? views.findIndex(([id]) => id === afterId) : -1;
+    if (index >= 0) views.splice(index + 1, 0, view);
+    else views.push(view);
+    return views;
+  };
 
   proto.connectedCallback = function () {
     const result = baseConnectedCallback.call(this);
+    if (this._topicsSortDirection !== "asc" && this._topicsSortDirection !== "desc") {
+      this._topicsSortDirection = "desc";
+    }
     if (!this.__mojvBrowserDashboardActionAdded) {
       const actions = this.shadowRoot.querySelector(".top-actions");
       if (actions) {
@@ -23,11 +36,32 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
         this.__mojvBrowserDashboardActionAdded = true;
       }
     }
+    if (!this.__mojvUsabilityEventsBound) {
+      this.__mojvUsabilityEventsBound = true;
+      this.shadowRoot.addEventListener("click", (event) => {
+        const printButton = event.target.closest?.("[data-mojv-print]");
+        if (printButton) {
+          event.preventDefault();
+          window.print();
+          return;
+        }
+        const sortButton = event.target.closest?.("[data-topics-sort]");
+        if (sortButton) {
+          event.preventDefault();
+          this._topicsSortDirection = this._topicsSortDirection === "asc" ? "desc" : "asc";
+          if (this._activeView === "topics") this._renderActiveView();
+        }
+      });
+    }
     return result;
   };
 
   proto._availableViews = function (student) {
-    const views = baseAvailableViews.call(this, student);
+    const views = baseAvailableViews.call(this, student).filter(([id]) => !["info", "topics"].includes(id));
+
+    this._mojvEnsureView(views, ["grades", "Oceny", "5"], "attendance");
+    this._mojvEnsureView(views, ["messages", "Wiadomości", "✉"], "schoolwork");
+
     const hasInfo = Boolean(
       student?.school_info ||
       (student?.teachers || []).length ||
@@ -37,13 +71,25 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
       student?.excuses?.blocked ||
       (student?.excuses?.entries || []).length
     );
-    if (hasInfo && !views.some(([id]) => id === "info")) {
-      views.push(["info", "Informacje", "ⓘ"]);
-    }
-    if ((student?.completed_lessons || []).length && !views.some(([id]) => id === "topics")) {
+    if ((student?.completed_lessons || []).length) {
       views.push(["topics", "Tematy", "≡"]);
     }
+    if (hasInfo) {
+      views.push(["info", "Informacje", "ⓘ"]);
+    }
     return views;
+  };
+
+  proto._renderMessages = function (student) {
+    if ((student?.messages || []).length && baseRenderMessages) {
+      return baseRenderMessages.call(this, student);
+    }
+    return `<section class="card list-view-card" data-view="messages"><div class="section-head"><div><span class="kicker">Wiadomości</span><h2>Skrzynka</h2></div><span>0</span></div><div class="mini-empty roomy">Brak wiadomości.</div></section>`;
+  };
+
+  proto._renderAttendance = function (student) {
+    const base = baseRenderAttendance ? baseRenderAttendance.call(this, student) : "";
+    return `<div class="mojv-print-toolbar"><button type="button" class="mojv-print-button" data-mojv-print="statistics">Drukuj statystyki</button></div>${base}`;
   };
 
   proto._renderActiveView = function () {
@@ -131,9 +177,14 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
   };
 
   proto._renderCompletedTopics = function (student) {
-    const rows = [...(student.completed_lessons || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const direction = this._topicsSortDirection === "asc" ? "asc" : "desc";
+    const rows = [...(student.completed_lessons || [])].sort((a, b) => {
+      const delta = new Date(a.date) - new Date(b.date);
+      return direction === "asc" ? delta : -delta;
+    });
+    const sortLabel = direction === "asc" ? "Najstarsze → najnowsze" : "Najnowsze → najstarsze";
     return `<section class="card expanded-topics-card" data-view="topics">
-      <div class="section-head"><div><span class="kicker">Tematy</span><h2>Zrealizowane zajęcia</h2></div><span>${rows.length}</span></div>
+      <div class="section-head"><div><span class="kicker">Tematy</span><h2>Zrealizowane zajęcia</h2></div><div class="expanded-topic-actions"><span>${rows.length}</span><button type="button" class="topic-sort-button" data-topics-sort="true">${this._e(sortLabel)}</button></div></div>
       ${rows.length ? `<div class="expanded-topic-list">${rows.map((item) => `<article><time>${this._e(this._date(item.date, true))}</time><div><small>${item.lesson_number ? `Lekcja ${this._e(item.lesson_number)} · ` : ""}${this._e(item.subject || "Zajęcia")}</small><strong>${this._e(item.topic || "Brak tematu")}</strong>${item.teacher ? `<span>${this._e(item.teacher)}</span>` : ""}</div></article>`).join("")}</div>` : `<div class="mini-empty roomy">Brak zrealizowanych tematów w pobranym zakresie.</div>`}
     </section>`;
   };
@@ -143,8 +194,10 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
       .dashboard-link{display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border:1px solid var(--mv-line);border-radius:12px;background:var(--mv-soft);color:var(--primary-text-color,#fff);text-decoration:none;font-size:12px;font-weight:700;white-space:nowrap}.dashboard-link:hover,.dashboard-link:focus-visible{border-color:var(--mv-accent);outline:none}
       .expanded-today-card{display:grid;gap:14px;padding:18px}.expanded-today-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.expanded-today-grid>div,.expanded-important-row{display:grid;gap:3px;padding:12px;border:1px solid var(--mv-line);border-radius:12px;background:var(--mv-soft)}.expanded-important-row{width:100%;color:inherit;text-align:left;cursor:pointer}.expanded-important-row:hover,.expanded-important-row:focus-visible{border-color:var(--mv-accent);outline:none}.expanded-today-grid small,.expanded-today-grid span,.expanded-important-row span,.expanded-important-row small,.expanded-muted{color:var(--mv-muted)}.expanded-today-grid strong{font-size:20px}.expanded-important-list{display:grid;gap:8px}
       .expanded-info-view{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.expanded-info-card,.expanded-topics-card{padding:18px}.expanded-kv,.expanded-simple-list{display:grid;gap:8px}.expanded-kv>div,.expanded-simple-list>div{display:grid;gap:2px;padding:10px 0;border-bottom:1px solid var(--mv-line)}.expanded-kv>div:last-child,.expanded-simple-list>div:last-child{border-bottom:0}.expanded-kv small,.expanded-simple-list span{color:var(--mv-muted)}.expanded-status-line{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;background:var(--mv-soft);margin-bottom:8px}.expanded-status-line strong{color:var(--error-color,#db4437)}
+      .expanded-topic-actions{display:flex;gap:8px;align-items:center}.expanded-topic-actions>span{color:var(--mv-muted);font-size:11px}.topic-sort-button,.mojv-print-button{min-height:36px;padding:0 10px;border:1px solid var(--mv-line);border-radius:10px;background:var(--mv-soft);cursor:pointer;font-size:10px;font-weight:700}.topic-sort-button:hover,.topic-sort-button:focus-visible,.mojv-print-button:hover,.mojv-print-button:focus-visible{border-color:var(--mv-accent);outline:none}.mojv-print-toolbar{display:flex;justify-content:flex-end;margin-bottom:10px}
       .expanded-topic-list{display:grid}.expanded-topic-list article{display:grid;grid-template-columns:110px minmax(0,1fr);gap:14px;padding:12px 0;border-bottom:1px solid var(--mv-line)}.expanded-topic-list article:last-child{border-bottom:0}.expanded-topic-list time,.expanded-topic-list small,.expanded-topic-list span{color:var(--mv-muted)}.expanded-topic-list article>div{display:grid;gap:3px}
-      @media(max-width:760px){.dashboard-link{display:none}.expanded-info-view{grid-template-columns:1fr}.expanded-today-grid{grid-template-columns:1fr}.expanded-topic-list article{grid-template-columns:1fr;gap:4px}}
+      @media(max-width:760px){.dashboard-link{display:none}.expanded-info-view{grid-template-columns:1fr}.expanded-today-grid{grid-template-columns:1fr}.expanded-topic-list article{grid-template-columns:1fr;gap:4px}.expanded-topic-actions{align-items:flex-end;flex-direction:column}}
+      @media print{:host{background:#fff!important;color:#000!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}.topbar,.student-nav,.view-nav,.dashboard-link,.mojv-print-toolbar,.mojv-print-button,.topic-sort-button{display:none!important}.app-shell{max-width:none!important;padding:0!important}.view-content{min-height:0}.card{box-shadow:none!important;break-inside:avoid}.schedule-scroll{overflow:visible!important}.schedule-canvas{min-width:0!important}.schedule-table{font-size:9px}.schedule-now-indicator{margin:8px 0!important}}
     `;
   };
 }
