@@ -196,3 +196,27 @@ class HelperGateway:
         if not validate_snapshot(payload):
             raise HelperRequestError("Helper returned an invalid snapshot")
         return payload
+
+    async def async_send_reply(
+        self,
+        username: str,
+        password: str,
+        student_id: str,
+        message_id: str,
+        body: str,
+    ) -> None:
+        """Ask the local helper to send one already-confirmed reply."""
+        payload = await self._helper_json(
+            "POST",
+            "/v1/actions/reply",
+            payload={
+                "username": username,
+                "password": password,
+                "student_id": student_id,
+                "message_id": message_id,
+                "body": body,
+                "confirmed": True,
+            },
+        )
+        if not isinstance(payload, dict) or payload.get("status") != "sent":
+            raise HelperRequestError("Helper did not confirm message delivery")

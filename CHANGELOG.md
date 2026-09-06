@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.15.0] - 2026-09-06
+
+- jeden trwały panel boczny **Szkoła** (`/school`); migracja usuwa historyczny, zdublowany wpis `/mojv-dashboard`,
+- modułowy Pulpit z przełączanymi lokalnie kartami, agendą tygodnia oraz średnimi ważonymi i trendem dwóch ostatnich ocen,
+- większa typografia planu i terminarza, adaptacyjny układ statystyk oraz podpowiedź pełnej treści powiadomienia po najechaniu/fokusie,
+- stany lekcji: odbyta zielona, bieżąca niebieska, odwołana czerwona; dodawanie i usuwanie własnych, lokalnych zajęć (np. szachów),
+- druk planu do A4 w poziomie,
+- lokalne szablony usprawiedliwień i odpowiedzi w widoku **Korespondencja**; zapis szablonu nigdy nie wysyła go do e-dziennika,
+- powiadomienia push mogą otworzyć `/school` w aplikacji mobilnej Home Assistant i są tagowane, aby nie dublować alertu dla tego samego zdarzenia.
+- wiadomości mają przycisk odpowiedzi: wymagane są zaznaczenie zgody, osobne pytanie potwierdzające oraz działający mojV Auth Helper 0.2.0; dopiero wtedy helper wykonuje akcję w przeglądarce portalu.
+
 ## [0.14.0] - 2026-09-04
 
 - skorygowano horyzont planu do dokładnie czterech tygodni łącznie: poprzedni (`-1`), bieżący (`0`) oraz dwa kolejne (`+1`, `+2`); Core i browser fallback używają tego samego zakresu,

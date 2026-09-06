@@ -288,6 +288,28 @@ class MojVClient:
             raise MojVClientError("Nie otrzymano danych żadnego dziecka")
         return AccountSnapshot(students=tuple(students), updated_at=snapshot_time)
 
+    async def async_send_reply(
+        self,
+        student_id: str,
+        message_id: str,
+        body: str,
+    ) -> None:
+        """Send one reply through the local browser helper after UI confirmation."""
+        if self._auth_backend != AUTH_BACKEND_HELPER or self._helper_gateway is None:
+            raise MojVClientError("Odpowiedzi wymagają lokalnego mojV Auth Helper")
+        if not self._username or not self._password:
+            raise MojVClientError("Brak danych logowania")
+        try:
+            await self._helper_gateway.async_send_reply(
+                self._username, self._password, student_id, message_id, body
+            )
+        except HelperInvalidAuth as err:
+            raise MojVClientError("Nieprawidłowy login lub hasło") from err
+        except HelperUnavailable as err:
+            raise MojVClientError("Lokalny helper logowania nie jest uruchomiony") from err
+        except HelperRequestError as err:
+            raise MojVClientError(f"Nie wysłano wiadomości: {err}") from err
+
     async def _async_login(self) -> None:
         await self.async_close()
         self._session = create_session()

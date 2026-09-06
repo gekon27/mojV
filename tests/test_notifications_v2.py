@@ -41,6 +41,8 @@ def test_push_uses_configured_notify_entities_and_send_message() -> None:
     assert "CONF_NOTIFY_TARGETS" in source
     assert '"notify"' in source
     assert '"send_message"' in source
+    assert '"url": "/school"' in source
+    assert '"tag": f"mojv-{candidate.event_id}"' in source
     assert 'target={"entity_id": target}' in source
     assert "for target in targets" in source
 

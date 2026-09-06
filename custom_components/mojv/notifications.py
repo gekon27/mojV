@@ -189,6 +189,10 @@ class MojVNotificationManager:
                     {
                         "title": candidate.title,
                         "message": candidate.message,
+                        "data": {
+                            "url": "/school",
+                            "tag": f"mojv-{candidate.event_id}",
+                        },
                     },
                     target={"entity_id": target},
                     blocking=True,

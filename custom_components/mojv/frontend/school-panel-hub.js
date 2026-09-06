@@ -1,6 +1,7 @@
 import "./school-panel-hub-base.js";
 import "./school-panel-details.js";
 import "./school-panel-lesson-states.js";
+import "./school-panel-custom-schedule.js";
 
 const PanelClass = customElements.get("mojv-school-panel");
 const proto = PanelClass?.prototype;
@@ -30,13 +31,6 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
     if (this._topicsSortDirection !== "asc" && this._topicsSortDirection !== "desc") {
       this._topicsSortDirection = "desc";
     }
-    if (!this.__mojvBrowserDashboardActionAdded) {
-      const actions = this.shadowRoot.querySelector(".top-actions");
-      if (actions) {
-        actions.insertAdjacentHTML("afterbegin", `<a href="/mojv-dashboard" class="dashboard-link" title="Otwórz pełny dashboard">Otwórz dashboard</a>`);
-        this.__mojvBrowserDashboardActionAdded = true;
-      }
-    }
     if (!this.__mojvUsabilityEventsBound) {
       this.__mojvUsabilityEventsBound = true;
       this.shadowRoot.addEventListener("click", (event) => {
@@ -46,11 +40,77 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
           window.print();
           return;
         }
+        const customizeButton = event.target.closest?.("[data-mojv-customize-modules]");
+        if (customizeButton) {
+          event.preventDefault();
+          this._mojvOpenModuleSettings();
+          return;
+        }
+        const deleteTemplate = event.target.closest?.("[data-mojv-delete-template]");
+        if (deleteTemplate) {
+          event.preventDefault();
+          this._mojvDeleteCommunicationTemplate(deleteTemplate.dataset.mojvDeleteTemplate);
+          return;
+        }
+        const replyButton = event.target.closest?.("[data-mojv-reply-message]");
+        if (replyButton) {
+          event.preventDefault();
+          this._mojvOpenReplyDialog(replyButton.dataset.mojvReplyMessage);
+          return;
+        }
         const sortButton = event.target.closest?.("[data-topics-sort]");
         if (sortButton) {
           event.preventDefault();
           this._topicsSortDirection = this._topicsSortDirection === "asc" ? "desc" : "asc";
           if (this._activeView === "topics") this._renderActiveView();
+        }
+      });
+      this.shadowRoot.addEventListener("submit", async (event) => {
+        if (!(event.target instanceof HTMLFormElement) || event.target.dataset.mojvCommunicationTemplate !== "true") return;
+        event.preventDefault();
+        const form = event.target;
+        const submit = form.querySelector("button[type=submit]");
+        if (submit) submit.disabled = true;
+        try {
+          const values = new FormData(form);
+          await this._hass.callWS({ type: "mojv/communication_templates", action: "add", template: {
+            student_id: this._activeStudentId || "",
+            kind: String(values.get("kind") || "excuse"),
+            name: String(values.get("name") || ""),
+            body: String(values.get("body") || ""),
+          }});
+          form.reset();
+          await this._refresh();
+        } catch (error) {
+          const errorBox = form.querySelector("[data-mojv-template-error]");
+          if (errorBox) errorBox.textContent = `Nie zapisano: ${String(error)}`;
+        } finally {
+          if (submit) submit.disabled = false;
+        }
+      });
+      this.shadowRoot.addEventListener("submit", async (event) => {
+        if (!(event.target instanceof HTMLFormElement) || event.target.dataset.mojvSendReply !== "true") return;
+        event.preventDefault();
+        const form = event.target;
+        const body = String(new FormData(form).get("body") || "").trim();
+        const messageId = String(form.dataset.mojvMessageId || "");
+        const confirmed = form.querySelector("input[name=confirmed]")?.checked;
+        const errorBox = form.querySelector("[data-mojv-send-error]");
+        if (!body || !messageId || !confirmed) {
+          if (errorBox) errorBox.textContent = "Wpisz treść i zaznacz potwierdzenie.";
+          return;
+        }
+        if (!window.confirm("Wysłać tę odpowiedź do szkoły? Tej operacji nie można cofnąć.")) return;
+        const submit = form.querySelector("button[type=submit]");
+        if (submit) submit.disabled = true;
+        try {
+          await this._hass.callWS({ type: "mojv/send_reply", student_id: this._activeStudentId || "", message_id: messageId, body, confirmed: true });
+          this._closeMojvReplyDialog();
+          await this._refresh();
+        } catch (error) {
+          if (errorBox) errorBox.textContent = `Nie wysłano: ${String(error)}`;
+        } finally {
+          if (submit) submit.disabled = false;
         }
       });
     }
@@ -62,6 +122,7 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
 
     this._mojvEnsureView(views, ["grades", "Oceny", "5"], "attendance");
     this._mojvEnsureView(views, ["messages", "Wiadomości", "✉"], "schoolwork");
+    this._mojvEnsureView(views, ["communication", "Korespondencja", "✎"], "messages");
 
     const hasInfo = Boolean(
       student?.school_info ||
@@ -82,15 +143,18 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
   };
 
   proto._renderMessages = function (student) {
-    if ((student?.messages || []).length && baseRenderMessages) {
-      return baseRenderMessages.call(this, student);
-    }
-    return `<section class="card list-view-card" data-view="messages"><div class="section-head"><div><span class="kicker">Wiadomości</span><h2>Skrzynka</h2></div><span>0</span></div><div class="mini-empty roomy">Brak wiadomości.</div></section>`;
+    const rows = [...(student?.messages || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+    return `<section class="card list-view-card" data-view="messages"><div class="section-head"><div><span class="kicker">Wiadomości</span><h2>Skrzynka</h2></div><span>${rows.length}</span></div>${rows.length ? `<div class="data-list">${rows.map((item) => `<article class="data-row"><span class="remark-badge">✉</span><div><strong>${this._e(item.subject || "Bez tematu")}</strong><span>${this._e(item.sender || "")}</span><small>${this._e(item.body || "")}</small></div><div class="message-actions"><time>${this._e(this._date(item.date, true))}</time><button type="button" class="mojv-print-button" data-mojv-reply-message="${this._e(item.id)}">Odpowiedz</button></div></article>`).join("")}</div>` : `<div class="mini-empty roomy">Brak wiadomości.</div>`}</section>`;
   };
 
   proto._renderAttendance = function (student) {
     const base = baseRenderAttendance ? baseRenderAttendance.call(this, student) : "";
-    return `<div class="mojv-print-toolbar"><button type="button" class="mojv-print-button" data-mojv-print="statistics">Drukuj statystyki</button></div>${base}`;
+    const legend = [
+      ["O", "Obecność", "ok"], ["N", "Nieobecność", "bad"], ["NU", "Nieobecność usprawiedliwiona", "muted"],
+      ["NS", "Nieobecność z przyczyn szkolnych", "ok"], ["S", "Spóźnienie", "warn"], ["SU", "Spóźnienie usprawiedliwione", "muted"],
+      ["Z", "Zwolnienie", "muted"], ["UW", "Usprawiedliwienie oczekuje na zatwierdzenie", "warn"], ["UZ", "Usprawiedliwienie zatwierdzone", "ok"], ["UO", "Usprawiedliwienie odrzucone", "bad"],
+    ];
+    return `<div class="mojv-print-toolbar"><button type="button" class="mojv-print-button" data-mojv-print="statistics">Drukuj statystyki</button></div>${base}<section class="attendance-legend" aria-label="Legenda frekwencji"><span>Legenda</span>${legend.map(([code, label, state]) => `<button type="button" class="attendance-legend-dot ${state}" title="${this._e(label)}" aria-label="${this._e(label)}">${code}</button>`).join("")}</section>`;
   };
 
   proto._renderAttendanceStats = function (student) {
@@ -109,6 +173,9 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
         return;
       case "topics":
         content.innerHTML = this._renderCompletedTopics(student);
+        return;
+      case "communication":
+        content.innerHTML = this._renderCommunication(student);
         return;
       default:
         return baseRenderActiveView.call(this);
@@ -138,6 +205,132 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
       ${important}
     </section>`;
     return base.replace(/<\/div>\s*$/, `${extra}</div>`);
+  };
+
+  proto._mojvModuleKeys = function () {
+    return ["agenda", "grades", "schoolwork", "attendance", "important", "announcements", "meal", "duties"];
+  };
+
+  proto._mojvVisibleModules = function () {
+    try {
+      const stored = JSON.parse(localStorage.getItem("mojv.visible_modules") || "null");
+      if (Array.isArray(stored)) return new Set(stored);
+    } catch (_error) { /* use the complete default layout */ }
+    return new Set(this._mojvModuleKeys());
+  };
+
+  proto._mojvSaveVisibleModules = function (enabled) {
+    localStorage.setItem("mojv.visible_modules", JSON.stringify([...enabled]));
+  };
+
+  proto._mojvGradeSummary = function (student) {
+    const buckets = new Map();
+    for (const grade of student.grades || []) {
+      const value = Number(String(grade.value || "").replace(",", ".").match(/[1-6](?:\.\d+)?/)?.[0]);
+      if (!Number.isFinite(value)) continue;
+      const weight = Math.max(1, Number(String(grade.weight || "").replace(",", ".")) || 1);
+      const row = buckets.get(grade.subject) || { subject: grade.subject, sum: 0, weight: 0, newest: 0, marks: [] };
+      row.sum += value * weight;
+      row.weight += weight;
+      const dated = new Date(grade.date).getTime();
+      row.newest = Math.max(row.newest, Number.isFinite(dated) ? dated : 0);
+      row.marks.push({ value, date: Number.isFinite(dated) ? dated : 0 });
+      buckets.set(grade.subject, row);
+    }
+    return [...buckets.values()].map((row) => {
+      const marks = row.marks.sort((a, b) => a.date - b.date);
+      const change = marks.length >= 2 ? marks.at(-1).value - marks.at(-2).value : 0;
+      return { ...row, average: row.sum / row.weight, trend: change > 0 ? "up" : change < 0 ? "down" : "flat" };
+    }).sort((a, b) => a.average - b.average || b.newest - a.newest);
+  };
+
+  proto._mojvAgendaRows = function (student) {
+    const now = this._dayStart(new Date());
+    const limit = new Date(now); limit.setDate(limit.getDate() + 7);
+    const rows = [];
+    for (const day of this._weekDays(student, 0)) {
+      for (const lesson of [...(day.lessons || []), ...this._customLessonsForDay(student, day.date)]) {
+        const start = new Date(lesson.start);
+        if (start >= now && start < limit) rows.push({ date: start, kind: lesson.custom ? "Własne zajęcia" : "Lekcja", title: lesson.subject, detail: `${this._time(lesson.start)}–${this._time(lesson.end)}${lesson.room ? ` · ${lesson.room}` : ""}` });
+      }
+    }
+    for (const item of student.schoolwork || []) {
+      const date = new Date(item.date);
+      if (date >= now && date < limit) rows.push({ date, kind: this._workKind(item.kind), title: item.title || this._workKind(item.kind), detail: item.subject || "" });
+    }
+    for (const item of student.meetings || []) {
+      const date = new Date(item.start);
+      if (date >= now && date < limit) rows.push({ date, kind: "Zebranie", title: item.title || "Zebranie", detail: item.location || "" });
+    }
+    return rows.sort((a, b) => a.date - b.date).slice(0, 12);
+  };
+
+  proto._renderDashboard = function (student) {
+    const visible = this._mojvVisibleModules();
+    const agenda = this._mojvAgendaRows(student);
+    const grades = this._mojvGradeSummary(student);
+    const dashboard = student.dashboard || {};
+    const cards = [];
+    if (visible.has("agenda")) cards.push(`<section class="card modular-card modular-agenda"><div class="section-head"><div><span class="kicker">Najbliższe 7 dni</span><h2>Agenda tygodnia</h2></div><span>${agenda.length}</span></div>${agenda.length ? `<div class="modular-list">${agenda.map((item) => `<article><time>${this._e(this._date(item.date, true))}<small>${this._time(item.date)}</small></time><div><small>${this._e(item.kind)}</small><strong>${this._e(item.title)}</strong>${item.detail ? `<span>${this._e(item.detail)}</span>` : ""}</div></article>`).join("")}</div>` : `<div class="mini-empty roomy">Brak zajęć i terminów w najbliższych 7 dniach.</div>`}</section>`);
+    if (visible.has("grades")) cards.push(`<section class="card modular-card"><div class="section-head"><div><span class="kicker">Oceny</span><h2>Średnie i trend</h2></div><span>${grades.length}</span></div>${grades.length ? `<div class="grade-trend-grid">${grades.map((item) => `<article class="${item.average < 3 ? "needs-attention" : ""}"><strong>${this._e(item.subject)}</strong><span>${item.average.toFixed(2)} <small title="Trend dwóch ostatnich ocen">${item.trend === "up" ? "↗" : item.trend === "down" ? "↘" : "→"}</small></span><small>średnia ważona</small></article>`).join("")}</div>` : `<div class="mini-empty roomy">Brak ocen liczbowych do wyliczenia średniej.</div>`}</section>`);
+    if (visible.has("schoolwork")) {
+      const upcoming = (student.schoolwork || []).filter((item) => new Date(item.date) >= this._dayStart(new Date())).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 4);
+      cards.push(`<section class="card modular-card"><div class="section-head"><div><span class="kicker">Terminarz</span><h2>Najbliższe zadania</h2></div><span>${upcoming.length}</span></div>${upcoming.length ? `<div class="modular-list">${upcoming.map((item) => `<article><time>${this._e(this._date(item.date, true))}</time><div><small>${this._e(item.subject)}</small><strong>${this._e(item.title || this._workKind(item.kind))}</strong></div></article>`).join("")}</div>` : `<div class="mini-empty roomy">Brak nadchodzących zadań.</div>`}</section>`);
+    }
+    if (visible.has("attendance")) cards.push(`<section class="card modular-card"><div class="section-head"><div><span class="kicker">Frekwencja</span><h2>Na dziś</h2></div></div><div class="modular-metrics"><div><small>Obecności</small><strong>${Number(student.attendance_summary?.present || 0)}</strong></div><div><small>Nieobecności</small><strong>${Number(student.attendance_summary?.absent || 0)}</strong></div><div><small>Spóźnienia</small><strong>${Number(student.attendance_summary?.late || 0)}</strong></div></div></section>`);
+    if (visible.has("important") && (dashboard.lucky_number || (dashboard.important_today || []).length || dashboard.next_free_day)) cards.push(`<section class="card modular-card"><div class="section-head"><div><span class="kicker">Informacje</span><h2>Ważne dzisiaj</h2></div></div><div class="modular-list">${dashboard.lucky_number ? `<article><time>★</time><div><small>Szczęśliwy numerek</small><strong>${this._e(dashboard.lucky_number.value)}</strong></div></article>` : ""}${(dashboard.important_today || []).map((item) => `<article><time>!</time><div><small>${this._e(item.subject || item.kind || "Informacja")}</small><strong>${this._e(item.title || "Ważne")}</strong></div></article>`).join("")}${dashboard.next_free_day ? `<article><time>◷</time><div><small>Dzień wolny</small><strong>${this._e(dashboard.next_free_day.name)}</strong></div></article>` : ""}</div></section>`);
+    const optional = [["announcements", "Ogłoszenia", student.announcements], ["meal", "Jadłospis", student.meal], ["duties", "Dyżurni", student.duties]];
+    for (const [key, label, data] of optional) if (visible.has(key) && ((Array.isArray(data) && data.length) || (data && !Array.isArray(data)))) cards.push(`<section class="card modular-card"><div class="section-head"><div><span class="kicker">Szkoła</span><h2>${label}</h2></div></div><div class="modular-list">${(Array.isArray(data) ? data : [data]).map((item) => `<article><div><strong>${this._e(typeof item === "string" ? item : item.title || item.name || "Wpis")}</strong>${typeof item === "object" && item.detail ? `<span>${this._e(item.detail)}</span>` : ""}</div></article>`).join("")}</div></section>`);
+    return `<div class="modular-dashboard"><div class="modular-toolbar"><div><span class="kicker">Twój układ</span><h2>Szkoła bez przeładowania</h2></div><button type="button" class="mojv-print-button" data-mojv-customize-modules="true">Dostosuj karty</button></div><div class="modular-grid">${cards.length ? cards.join("") : `<div class="mini-empty roomy">Włącz przynajmniej jedną kartę w ustawieniach widoku.</div>`}</div></div>`;
+  };
+
+  proto._mojvOpenModuleSettings = function () {
+    this.shadowRoot.querySelector("[data-mojv-module-settings]")?.remove();
+    const enabled = this._mojvVisibleModules();
+    const labels = { agenda: "Agenda tygodnia", grades: "Średnie ocen", schoolwork: "Terminarz", attendance: "Frekwencja", important: "Ważne dzisiaj", announcements: "Ogłoszenia", meal: "Jadłospis", duties: "Dyżurni" };
+    const overlay = document.createElement("div");
+    overlay.className = "mojv-module-overlay"; overlay.dataset.mojvModuleSettings = "true";
+    overlay.innerHTML = `<div class="mojv-custom-backdrop" data-mojv-close-modules="true"></div><section class="mojv-module-dialog" role="dialog" aria-modal="true"><div class="mojv-custom-head"><div><span class="kicker">Ustawienia</span><h2>Widoczne karty</h2></div><button type="button" class="icon-button" data-mojv-close-modules="true" aria-label="Zamknij">×</button></div><form><div class="module-choice-list">${this._mojvModuleKeys().map((key) => `<label><input type="checkbox" value="${key}" ${enabled.has(key) ? "checked" : ""}>${labels[key]}</label>`).join("")}</div><div class="mojv-custom-actions"><button type="submit" class="mojv-custom-primary">Zapisz układ</button></div></form></section>`;
+    overlay.addEventListener("click", (event) => { if (event.target.closest?.("[data-mojv-close-modules]")) overlay.remove(); });
+    overlay.querySelector("form").addEventListener("submit", (event) => { event.preventDefault(); const next = new Set([...overlay.querySelectorAll("input:checked")].map((input) => input.value)); this._mojvSaveVisibleModules(next); overlay.remove(); this._renderActiveView(); });
+    this.shadowRoot.append(overlay);
+  };
+
+  proto._mojvDeleteCommunicationTemplate = async function (templateId) {
+    if (!templateId || !window.confirm("Usunąć lokalny szablon?")) return;
+    await this._hass.callWS({ type: "mojv/communication_templates", action: "remove", id: templateId });
+    await this._refresh();
+  };
+
+  proto._mojvOpenReplyDialog = function (messageId) {
+    const student = this._activeStudent();
+    const message = (student?.messages || []).find((item) => item.id === messageId);
+    if (!message) return;
+    this._closeMojvReplyDialog();
+    const overlay = document.createElement("div");
+    overlay.className = "mojv-custom-overlay";
+    overlay.dataset.mojvReplyOverlay = "true";
+    overlay.innerHTML = `<div class="mojv-custom-backdrop" data-mojv-close-reply="true"></div><section class="mojv-custom-dialog" role="dialog" aria-modal="true" aria-label="Odpowiedź na wiadomość"><form data-mojv-send-reply="true" data-mojv-message-id="${this._e(message.id)}"><div class="mojv-custom-head"><div><span class="kicker">Odpowiedź</span><h2>${this._e(message.subject || "Bez tematu")}</h2><p>${this._e(message.sender || "")}</p></div><button type="button" class="icon-button" data-mojv-close-reply="true" aria-label="Zamknij">×</button></div><div class="communication-template-form"><label class="communication-wide">Treść<textarea name="body" required maxlength="4000" placeholder="Wpisz odpowiedź..."></textarea></label><label class="communication-confirm"><input type="checkbox" name="confirmed"> Rozumiem, że wiadomość zostanie wysłana do szkoły.</label><p class="mojv-custom-error" data-mojv-send-error></p><div class="mojv-custom-actions"><button type="button" class="mojv-print-button" data-mojv-close-reply="true">Anuluj</button><button type="submit" class="mojv-custom-primary">Podgląd i wyślij</button></div></div></form></section>`;
+    overlay.addEventListener("click", (event) => { if (event.target.closest?.("[data-mojv-close-reply]")) this._closeMojvReplyDialog(); });
+    this.shadowRoot.append(overlay);
+    overlay.querySelector("textarea")?.focus();
+  };
+
+  proto._closeMojvReplyDialog = function () {
+    this.shadowRoot.querySelector("[data-mojv-reply-overlay]")?.remove();
+  };
+
+  proto._renderCommunication = function (student) {
+    const templates = student.communication_templates || [];
+    const excuses = templates.filter((item) => item.kind === "excuse");
+    const replies = templates.filter((item) => item.kind === "reply");
+    const templateRows = (rows, empty) => rows.length ? `<div class="communication-template-list">${rows.map((item) => `<article><div><strong>${this._e(item.name)}</strong><p>${this._e(item.body)}</p></div><button type="button" class="icon-button" data-mojv-delete-template="${this._e(item.id)}" aria-label="Usuń szablon ${this._e(item.name)}">×</button></article>`).join("")}</div>` : `<div class="mini-empty">${empty}</div>`;
+    return `<div class="communication-layout" data-view="communication">
+      <section class="card communication-card"><div class="section-head"><div><span class="kicker">Usprawiedliwienia</span><h2>Twoje szablony</h2></div><span>${excuses.length}</span></div>${templateRows(excuses, "Nie masz jeszcze szablonu usprawiedliwienia.")}</section>
+      <section class="card communication-card"><div class="section-head"><div><span class="kicker">Wiadomości</span><h2>Szablony odpowiedzi</h2></div><span>${replies.length}</span></div>${templateRows(replies, "Nie masz jeszcze szablonu odpowiedzi.")}</section>
+      <section class="card communication-card"><div class="section-head"><div><span class="kicker">Nowy schemat</span><h2>Zapisz tekst lokalnie</h2></div></div><form data-mojv-communication-template="true" class="communication-template-form"><label>Rodzaj<select name="kind"><option value="excuse">Usprawiedliwienie</option><option value="reply">Odpowiedź</option></select></label><label>Nazwa<input name="name" required maxlength="80" placeholder="np. Wizyta u lekarza"></label><label class="communication-wide">Treść<textarea name="body" required maxlength="2000" placeholder="Dzień dobry, proszę o usprawiedliwienie nieobecności..."></textarea></label><p class="mojv-custom-error" data-mojv-template-error></p><div class="mojv-custom-actions"><button type="submit" class="mojv-custom-primary">Zapisz szablon w Home Assistant</button></div></form></section>
+      <section class="card communication-notice"><div class="section-head"><div><span class="kicker">Bezpieczne nadanie</span><h2>Wysyłka do dziennika</h2></div></div><p>Teksty są przechowywane lokalnie. Faktyczne wysłanie usprawiedliwienia lub odpowiedzi będzie wymagało osobnego podglądu i potwierdzenia, aby nic nie zostało wysłane przypadkiem.</p></section>
+    </div>`;
   };
 
   proto._renderSchoolInfo = function (student) {
@@ -197,13 +390,14 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
 
   proto._styles = function () {
     return `${baseStyles.call(this)}
-      .dashboard-link{display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border:1px solid var(--mv-line);border-radius:12px;background:var(--mv-soft);color:var(--primary-text-color,#fff);text-decoration:none;font-size:12px;font-weight:700;white-space:nowrap}.dashboard-link:hover,.dashboard-link:focus-visible{border-color:var(--mv-accent);outline:none}
       .expanded-today-card{display:grid;gap:14px;padding:18px}.expanded-today-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.expanded-today-grid>div,.expanded-important-row{display:grid;gap:3px;padding:12px;border:1px solid var(--mv-line);border-radius:12px;background:var(--mv-soft)}.expanded-important-row{width:100%;color:inherit;text-align:left;cursor:pointer}.expanded-important-row:hover,.expanded-important-row:focus-visible{border-color:var(--mv-accent);outline:none}.expanded-today-grid small,.expanded-today-grid span,.expanded-important-row span,.expanded-important-row small,.expanded-muted{color:var(--mv-muted)}.expanded-today-grid strong{font-size:20px}.expanded-important-list{display:grid;gap:8px}
       .expanded-info-view{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.expanded-info-card,.expanded-topics-card{padding:18px}.expanded-kv,.expanded-simple-list{display:grid;gap:8px}.expanded-kv>div,.expanded-simple-list>div{display:grid;gap:2px;padding:10px 0;border-bottom:1px solid var(--mv-line)}.expanded-kv>div:last-child,.expanded-simple-list>div:last-child{border-bottom:0}.expanded-kv small,.expanded-simple-list span{color:var(--mv-muted)}.expanded-status-line{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;background:var(--mv-soft);margin-bottom:8px}.expanded-status-line strong{color:var(--error-color,#db4437)}
       .expanded-topic-actions{display:flex;gap:8px;align-items:center}.expanded-topic-actions>span{color:var(--mv-muted);font-size:11px}.topic-sort-button,.mojv-print-button{min-height:36px;padding:0 10px;border:1px solid var(--mv-line);border-radius:10px;background:var(--mv-soft);cursor:pointer;font-size:10px;font-weight:700}.topic-sort-button:hover,.topic-sort-button:focus-visible,.mojv-print-button:hover,.mojv-print-button:focus-visible{border-color:var(--mv-accent);outline:none}.mojv-print-toolbar{display:flex;justify-content:flex-end;margin-bottom:10px}
-      .expanded-topic-list{display:grid}.expanded-topic-list article{display:grid;grid-template-columns:110px minmax(0,1fr);gap:14px;padding:12px 0;border-bottom:1px solid var(--mv-line)}.expanded-topic-list article:last-child{border-bottom:0}.expanded-topic-list time,.expanded-topic-list small,.expanded-topic-list span{color:var(--mv-muted)}.expanded-topic-list article>div{display:grid;gap:3px}
-      @media(max-width:760px){.dashboard-link{display:none}.expanded-info-view{grid-template-columns:1fr}.expanded-today-grid{grid-template-columns:1fr}.expanded-topic-list article{grid-template-columns:1fr;gap:4px}.expanded-topic-actions{align-items:flex-end;flex-direction:column}}
-      @media print{:host{background:#fff!important;color:#000!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}.topbar,.student-nav,.view-nav,.dashboard-link,.mojv-print-toolbar,.mojv-print-button,.topic-sort-button{display:none!important}.app-shell{max-width:none!important;padding:0!important}.view-content{min-height:0}.card{box-shadow:none!important;break-inside:avoid}.schedule-scroll{overflow:visible!important}.schedule-canvas{min-width:0!important}.schedule-table{font-size:9px}.schedule-now-indicator{margin:8px 0!important}}
+      .expanded-topic-list{display:grid}.expanded-topic-list article{display:grid;grid-template-columns:110px minmax(0,1fr);gap:14px;padding:12px 0;border-bottom:1px solid var(--mv-line)}.expanded-topic-list article:last-child{border-bottom:0}.expanded-topic-list time,.expanded-topic-list small,.expanded-topic-list span{color:var(--mv-muted)}.expanded-topic-list article>div{display:grid;gap:3px}.attendance-legend{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:12px 2px}.attendance-legend>span{margin-right:3px;color:var(--mv-muted);font-size:11px;font-weight:750}.attendance-legend-dot{width:30px;height:30px;border:0;border-radius:50%;cursor:help;font-size:9px;font-weight:900;line-height:1}.attendance-legend-dot.ok{color:var(--mv-good);background:color-mix(in srgb,var(--mv-good) 18%,transparent)}.attendance-legend-dot.bad{color:var(--mv-bad);background:color-mix(in srgb,var(--mv-bad) 18%,transparent)}.attendance-legend-dot.warn{color:var(--mv-warn);background:color-mix(in srgb,var(--mv-warn) 18%,transparent)}.attendance-legend-dot.muted{color:var(--mv-muted);background:var(--mv-soft)}.attendance-legend-dot:hover,.attendance-legend-dot:focus-visible{outline:2px solid var(--mv-accent);outline-offset:2px}
+      .modular-dashboard{display:grid;gap:14px}.modular-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px}.modular-toolbar h2{margin:4px 0 0;font-size:22px}.modular-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;align-items:start}.modular-card{min-width:0}.modular-list{display:grid;padding:4px 18px 12px}.modular-list article{display:grid;grid-template-columns:76px minmax(0,1fr);gap:10px;padding:11px 0;border-bottom:1px solid var(--mv-line)}.modular-list article:last-child{border-bottom:0}.modular-list time{display:grid;align-content:start;gap:3px;color:var(--mv-muted);font-size:10px;font-weight:750}.modular-list time small,.modular-list span{color:var(--mv-muted);font-size:10px}.modular-list article>div{display:grid;gap:3px}.modular-list article small{color:var(--mv-muted);font-size:10px;text-transform:uppercase;letter-spacing:.05em}.grade-trend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;padding:14px}.grade-trend-grid article{display:grid;gap:3px;padding:12px;border:1px solid var(--mv-line);border-radius:12px;background:var(--mv-soft)}.grade-trend-grid article.needs-attention{border-color:color-mix(in srgb,var(--mv-warn) 55%,var(--mv-line))}.grade-trend-grid article>span{font-size:25px;font-weight:850}.grade-trend-grid small{color:var(--mv-muted)}.modular-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px}.modular-metrics>div{display:grid;gap:4px;padding:12px;border-radius:12px;background:var(--mv-soft)}.modular-metrics small{color:var(--mv-muted);font-size:10px}.modular-metrics strong{font-size:24px}.mojv-module-overlay{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px}.mojv-module-dialog{position:relative;z-index:1;width:min(460px,100%);background:var(--mv-card);border:1px solid var(--mv-line);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.35);overflow:hidden}.module-choice-list{display:grid;gap:2px;padding:16px}.module-choice-list label{display:flex;align-items:center;gap:10px;min-height:42px;padding:0 8px;border-radius:9px;cursor:pointer}.module-choice-list label:hover{background:var(--mv-soft)}.module-choice-list input{width:17px;height:17px;accent-color:var(--mv-accent)}
+      .message-actions{display:grid;justify-items:end;align-content:space-between;gap:8px}.message-actions time{color:var(--mv-muted);font-size:10px}.communication-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.communication-card,.communication-notice{min-width:0}.communication-template-list{display:grid;padding:5px 18px 12px}.communication-template-list article{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:12px;padding:12px 0;border-bottom:1px solid var(--mv-line)}.communication-template-list article:last-child{border-bottom:0}.communication-template-list article>div{min-width:0}.communication-template-list strong{display:block}.communication-template-list p{margin:5px 0 0;color:var(--mv-muted);font-size:12px;line-height:1.45;white-space:pre-wrap}.communication-template-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:18px}.communication-template-form label{display:grid;gap:6px;color:var(--mv-muted);font-size:11px;font-weight:700}.communication-template-form input,.communication-template-form select,.communication-template-form textarea{width:100%;min-height:40px;padding:9px 10px;border:1px solid var(--mv-line);border-radius:10px;background:var(--mv-soft);color:var(--primary-text-color,#fff);font:inherit}.communication-template-form textarea{min-height:110px;resize:vertical}.communication-wide{grid-column:1/-1}.communication-confirm{grid-column:1/-1;display:flex!important;align-items:center;gap:8px}.communication-confirm input{width:18px;height:18px;min-height:18px!important;padding:0!important;accent-color:var(--mv-accent)}.communication-template-form .mojv-custom-actions{grid-column:1/-1;padding:0;border:0}.communication-notice{grid-column:1/-1;padding:0 18px 18px}.communication-notice p{margin:16px 0 0;color:var(--mv-muted);font-size:12px;line-height:1.5}
+      @media(max-width:760px){.expanded-info-view,.communication-layout{grid-template-columns:1fr}.expanded-today-grid{grid-template-columns:1fr}.expanded-topic-list article{grid-template-columns:1fr;gap:4px}.expanded-topic-actions{align-items:flex-end;flex-direction:column}.modular-toolbar{align-items:flex-start;flex-direction:column}.modular-toolbar button{width:100%}.modular-list article{grid-template-columns:82px minmax(0,1fr)}.mojv-module-overlay{align-items:end;padding:0}.mojv-module-dialog{width:100%;border-radius:18px 18px 0 0}.communication-template-form{grid-template-columns:1fr}}
+      @media print{@page{size:A4 landscape;margin:10mm}:host{background:#fff!important;color:#000!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}.topbar,.student-nav,.view-nav,.mojv-print-toolbar,.mojv-print-button,.topic-sort-button{display:none!important}.app-shell{max-width:none!important;padding:0!important}.view-content{min-height:0}.card{box-shadow:none!important;break-inside:avoid}.schedule-scroll{overflow:visible!important}.schedule-canvas{min-width:0!important}.schedule-table{font-size:9px}.schedule-now-indicator{margin:8px 0!important}}
     `;
   };
 }

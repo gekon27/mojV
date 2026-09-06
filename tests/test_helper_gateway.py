@@ -82,6 +82,8 @@ class _Session:
                     ]
                 },
             )
+        if url.endswith("/v1/actions/reply"):
+            return _Response(200, {"status": "sent"})
         raise AssertionError(url)
 
 
@@ -111,6 +113,26 @@ def test_gateway_validates_snapshot_contract() -> None:
         gateway = helper.HelperGateway(_Session(), supervisor_token="token")
         snapshot = await gateway.async_snapshot("alias", "secret")
         assert snapshot["students"][0]["name"] == "Jan"
+
+    asyncio.run(run())
+
+
+def test_gateway_sends_a_reply_only_to_the_private_helper_action() -> None:
+    helper = _load()
+
+    async def run():
+        session = _Session()
+        gateway = helper.HelperGateway(session, supervisor_token="token")
+        await gateway.async_send_reply("alias", "secret", "1", "public-id", "Dziękuję")
+        call = next(item for item in session.calls if item[1].endswith("/v1/actions/reply"))
+        assert call[2]["json"] == {
+            "username": "alias",
+            "password": "secret",
+            "student_id": "1",
+            "message_id": "public-id",
+            "body": "Dziękuję",
+            "confirmed": True,
+        }
 
     asyncio.run(run())
 

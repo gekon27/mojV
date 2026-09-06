@@ -6,7 +6,7 @@ Integracja Home Assistant dla danych szkolnych: plan lekcji, aktualna i następn
 
 ## Status
 
-**HACS 0.14.0 — LIVE + plan na 4 tygodnie łącznie (-1 / bieżący / +1 / +2) + School Hub + pełnoekranowy dashboard przeglądarkowy + pełny Terminarz + Notification Engine v2 + samodzielny mojV Auth Helper 0.1.11.**
+**HACS 0.15.0 — jeden adaptacyjny panel Szkoła, własne zajęcia, A4, frekwencja z legendą, modułowy pulpit i potwierdzane odpowiedzi przez mojV Auth Helper 0.2.0.**
 
 Projekt jest rozdzielony na dwa niezależne repozytoria:
 
@@ -19,13 +19,13 @@ Integracja obsługuje **1..N dzieci**. Nie zakłada stałej liczby uczniów na k
 
 mojV zawsze zaczyna od lekkiego backendu HTTP. Chromium nie jest uruchamiany, jeżeli nie jest potrzebny.
 
-Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie korzysta z lokalnej aplikacji **mojV Auth Helper 0.1.11**. Użytkownik nie wybiera backendu ręcznie.
+Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie korzysta z lokalnej aplikacji **mojV Auth Helper 0.2.0**. Użytkownik nie wybiera backendu ręcznie.
 
 **HTTP first → automatyczny helper fallback.**
 
 ## Aktualny zakres LIVE
 
-W HACS 0.14.0 obsługiwane są rzeczywiste dane:
+W HACS 0.15.0 obsługiwane są rzeczywiste dane:
 
 - automatyczne wykrywanie 1..N dzieci,
 - plan lekcji na dokładnie cztery tygodnie łącznie: poprzedni tydzień, tydzień bieżący oraz dwa kolejne tygodnie,
@@ -51,21 +51,21 @@ W HACS 0.14.0 obsługiwane są rzeczywiste dane:
 - zrealizowane tematy lekcji,
 - alerty i zdarzenia Home Assistant,
 - panel boczny **Szkoła / School Hub**,
-- pełnoekranowy, uwierzytelniony dashboard Home Assistant pod `/mojv-dashboard`.
+- jeden panel boczny **Szkoła** pod `/school`, z adaptacyjnymi kartami.
 
 Każdy dodatkowy moduł jest pobierany niezależnie. Jeżeli jeden endpoint jest chwilowo niedostępny, pozostałe moduły nadal mogą się zaktualizować. mojV nie tworzy fikcyjnych rekordów zastępczych.
 
 ## Instalacja HACS
 
 1. W HACS dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories.
-2. Wybierz `mojV` i zainstaluj wersję **0.14.0** lub nowszą.
+2. Wybierz `mojV` i zainstaluj wersję **0.15.0** lub nowszą.
 3. Uruchom ponownie Home Assistant.
 4. Otwórz **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
 5. Podaj dane konta szkolnego.
 
 Po poprawnym logowaniu mojV wykryje wszystkich uczniów dostępnych na koncie i utworzy osobne urządzenie Home Assistant dla każdego z nich.
 
-## mojV Auth Helper 0.1.11
+## mojV Auth Helper 0.2.0
 
 Helper jest niezależną aplikacją Home Assistant i nie znajduje się w repozytorium HACS.
 
@@ -75,19 +75,19 @@ Instaluj go tylko wtedy, gdy Config Flow poinformuje, że konto wymaga pełnej p
 2. Dodaj repozytorium `https://github.com/gekon27/mojv-auth-helper`.
 3. Odśwież App Store.
 4. Otwórz **mojV Auth Helper**.
-5. Zainstaluj wersję **0.1.11** lub nowszą.
+5. Zainstaluj wersję **0.2.0** lub nowszą.
 6. Uruchom aplikację i pozostaw automatyczny start włączony.
 7. Wróć do konfiguracji integracji mojV i ponów logowanie.
 
 Home Assistant pobiera gotowy publiczny obraz:
 
-`ghcr.io/gekon27/mojv-auth-helper:0.1.11`
+`ghcr.io/gekon27/mojv-auth-helper:0.2.0`
 
-Obraz `0.1.11` jest publikowany jako manifest multi-arch dla `linux/amd64` i `linux/arm64` (`aarch64`). Pipeline publikacji weryfikuje oba obrazy, manifest platform oraz anonimowy pull bez poświadczeń GHCR.
+Obraz `0.2.0` jest publikowany jako manifest multi-arch dla `linux/amd64` i `linux/arm64` (`aarch64`). Pipeline publikacji weryfikuje oba obrazy, manifest platform oraz anonimowy pull bez poświadczeń GHCR.
 
 ## School Hub — panel boczny „Szkoła”
 
-Panel korzysta wyłącznie z publicznego snapshotu zapisanego w Home Assistant. Zmiana dziecka, widoku lub tygodnia nie powoduje dodatkowego logowania do portalu. HACS 0.14.0 pozwala lokalnie przeglądać dokładnie cztery tygodnie: poprzedni, bieżący oraz dwa kolejne, bez dodatkowego requestu przy zmianie tygodnia.
+Panel korzysta wyłącznie z publicznego snapshotu zapisanego w Home Assistant. Zmiana dziecka, widoku lub tygodnia nie powoduje dodatkowego logowania do portalu. HACS 0.15.0 pozwala lokalnie przeglądać dokładnie cztery tygodnie: poprzedni, bieżący oraz dwa kolejne, bez dodatkowego requestu przy zmianie tygodnia.
 
 Od HACS 0.12.0 backend panelu deduplikuje uczniów po stabilnym `student_id`. Jeżeli ten sam uczeń występuje w więcej niż jednym aktywnym wpisie konfiguracji, do interfejsu trafia tylko najświeższy snapshot i nie pojawiają się podwójne przyciski dziecka.
 
@@ -115,7 +115,7 @@ Pulpit zbiera najważniejsze dane ucznia w jednym miejscu:
 
 Dostępne są m.in.:
 
-- **Pulpit** — agregat najważniejszych informacji,
+- **Pulpit** — niezależne, konfigurowalne karty (agenda tygodnia, średnie i trend ocen, terminarz, frekwencja i informacje); układ jest zapamiętywany w przeglądarce,
 - **Dzisiaj** — aktualna/następna lekcja, plan dnia, obecność i alerty,
 - **Plan** — tydzień, wspólne sloty godzinowe, bieżąca linia czasu, zastępstwa i anulowania; lekcja bieżąca, odbyta, przyszła i odwołana mają osobne stany wizualne i tekstowe znaczniki; w przerwie panel pokazuje jawny stan **Przerwa** z następną lekcją; nawigacja obejmuje `-1 / bieżący / +1 / +2`,
 - **Frekwencja** — podsumowanie stanów i ostatnie wpisy,
@@ -128,12 +128,13 @@ Dostępne są m.in.:
 - **Zebrania** — spotkania, miejsce, opis i bezpieczne linki online,
 - **Tematy** — zrealizowane tematy lekcji z przełączanym sortowaniem daty: najnowsze/najstarsze,
 - **Informacje** — ostatnia zakładka danych szkolnych po Tematach; szkoła, wychowawcy, nauczyciele, dni wolne, usprawiedliwienia i bieżące informacje,
+- **Korespondencja** — lokalne, wielokrotnego użytku szablony usprawiedliwień i odpowiedzi; ich zapis nie wysyła żadnej wiadomości do szkoły,
 - **Aktywność** — jedna chronologiczna oś najważniejszych zdarzeń,
 - **Powiadomienia** — lokalna historia Notification Engine v2.
 
 Zakładki **Oceny** i **Wiadomości** pozostają widoczne również przy pustych danych. Pozostałe dodatkowe widoki mogą zależeć od danych rzeczywiście udostępnianych przez szkołę. Układ jest responsywny dla desktopu, tabletu i telefonu.
 
-Widoki **Plan**, **Frekwencja** i **Statystyki** udostępniają akcje drukowania. Druk korzysta z dedykowanego `@media print`, aby ukryć elementy nawigacyjne i zachować czytelną zawartość.
+Widoki **Plan**, **Frekwencja** i **Statystyki** udostępniają akcje drukowania. Plan jest formatowany do A4 w poziomie, a druk korzysta z dedykowanego `@media print`, aby ukryć elementy nawigacyjne i zachować czytelną zawartość. Do planu można lokalnie dodać cykliczne zajęcia dodatkowe (np. szachy); nie są one wysyłane do e-dziennika.
 
 ### Szczegóły po kliknięciu
 
@@ -149,20 +150,9 @@ W HACS 0.14.0 Terminarz, zadania domowe, sprawdziany/kartkówki oraz wpisy „Wa
 
 Jeżeli źródło nie udostępnia dodatkowej treści, interfejs pokazuje neutralny komunikat „Brak dodatkowej treści”.
 
-## Dashboard przeglądarkowy
+## Jeden panel Szkoła
 
-HACS 0.12.0 rejestruje drugi, pełnoekranowy panel Home Assistant:
-
-`/mojv-dashboard`
-
-Dashboard:
-
-- pozostaje za standardowym uwierzytelnianiem Home Assistant,
-- nie ma osobnego loginu, tokenu ani publicznego API,
-- korzysta z tego samego bezpiecznego payloadu i renderera co School Hub,
-- obsługuje ten sam wybór dziecka i te same widoki,
-- jest przeznaczony do desktopu, tabletu lub przeglądarki kioskowej,
-- może być otwarty przyciskiem **Otwórz dashboard** z School Hub.
+Integracja rejestruje tylko panel boczny **Szkoła** pod `/school`. Przy aktualizacji usuwa historyczny, zdublowany wpis `/mojv-dashboard`; nie tworzy dodatkowego bocznego menu ani osobnego logowania.
 
 ## Encje Home Assistant
 
@@ -265,13 +255,13 @@ Historia przechowuje maksymalnie 200 najnowszych, deduplikowanych rekordów na w
 
 ## Diagnostyka
 
-Przy starcie integracji HACS 0.14.0 w logu powinien pojawić się wpis:
+Przy starcie integracji HACS 0.15.0 w logu powinien pojawić się wpis:
 
-`mojV integration version=0.14.0`
+`mojV integration version=0.15.0`
 
 W logach helpera:
 
-`mojV Auth Helper version=0.1.11`
+`mojV Auth Helper version=0.2.0`
 
 Endpoint `/health` helpera raportuje status i wersję wewnątrz kontenera.
 

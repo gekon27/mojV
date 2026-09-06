@@ -9,17 +9,14 @@ DASHBOARD_JS = COMPONENT / "frontend" / "school-dashboard.js"
 HUB_JS = COMPONENT / "frontend" / "school-panel-hub.js"
 
 
-def test_browser_dashboard_is_second_home_assistant_custom_panel() -> None:
+def test_legacy_browser_dashboard_is_removed_so_school_has_one_sidebar_entry() -> None:
     source = PANEL.read_text(encoding="utf-8")
     assert 'DASHBOARD_URL_PATH = "mojv-dashboard"' in source
-    assert 'DASHBOARD_ELEMENT = "mojv-school-dashboard"' in source
-    assert 'DASHBOARD_TITLE = "Dashboard szkoły"' in source
-    assert 'module_url=f"{PANEL_STATIC_URL}/school-dashboard.js"' in source
-    assert "panel_custom.async_register_panel" in source
-    assert "require_admin=False" in source
+    assert "frontend.async_remove_panel(hass, DASHBOARD_URL_PATH)" in source
+    assert "panel_custom.async_register_panel" not in source
 
 
-def test_dashboard_reuses_school_hub_instead_of_fetching_portal_or_ws_itself() -> None:
+def test_legacy_dashboard_module_remains_data_free_during_migration() -> None:
     assert DASHBOARD_JS.exists(), "browser dashboard module is not implemented yet"
     source = DASHBOARD_JS.read_text(encoding="utf-8")
     assert 'import "./school-panel-hub.js"' in source
@@ -29,7 +26,7 @@ def test_dashboard_reuses_school_hub_instead_of_fetching_portal_or_ws_itself() -
     assert "fetch(" not in source
 
 
-def test_school_hub_exposes_browser_dashboard_action() -> None:
+def test_school_hub_does_not_link_to_retired_dashboard() -> None:
     source = HUB_JS.read_text(encoding="utf-8")
-    assert 'href="/mojv-dashboard"' in source
-    assert "Otwórz dashboard" in source
+    assert 'href="/mojv-dashboard"' not in source
+    assert "Otwórz dashboard" not in source

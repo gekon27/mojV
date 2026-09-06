@@ -115,7 +115,7 @@ if (proto && !proto.__mojvLiveModulesPatched) {
       .live-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--mv-accent) 14%,transparent);color:var(--mv-accent);font-weight:800}
       .live-icon.achievement{color:var(--mv-warn);background:color-mix(in srgb,var(--mv-warn) 15%,transparent)}
       .message-row.unread strong{color:var(--mv-accent)}
-      .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+      .live-module-card[data-view="attendance_stats"]{max-width:none}.live-module-card[data-view="attendance_stats"] .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px}
       .stat-card{padding:16px;border:1px solid var(--mv-line);background:var(--mv-soft);border-radius:14px}
       .stat-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.stat-head>div{display:grid;gap:5px}.stat-head strong{font-size:24px}.stat-head>span{font-size:11px;color:var(--mv-muted)}
       .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:14px}.stat-grid span{display:grid;padding:8px;border-radius:10px;background:var(--mv-card)}.stat-grid small{color:var(--mv-muted);font-size:10px}.stat-grid strong{margin-top:2px}

@@ -237,7 +237,10 @@ class MojVSchoolPanel extends HTMLElement {
   }
 
   _renderSchedule(student) {
-    const days = this._weekDays(student, this._weekOffset);
+    const days = this._weekDays(student, this._weekOffset).map((day) => ({
+      ...day,
+      lessons: [...(day.lessons || []), ...this._customLessonsForDay(student, day.date)],
+    }));
     const slots = this._scheduleSlots(days);
     const weekStart = this._startOfWeek(this._weekOffset);
     const weekEnd = new Date(weekStart);
@@ -258,6 +261,30 @@ class MojVSchoolPanel extends HTMLElement {
       <div class="schedule-toolbar"><div><span class="kicker">Plan lekcji</span><h2>${this._e(this._dateRange(weekStart, weekEnd))}</h2></div><div class="week-controls" aria-label="Zmiana tygodnia"><button type="button" class="week-button" data-week="-1" ${this._weekOffset <= -1 ? "disabled" : ""}>‹</button><button type="button" class="week-current" data-week="0">${this._weekOffset === 0 ? "Bieżący tydzień" : "Dzisiaj"}</button><button type="button" class="week-button" data-week="1" ${this._weekOffset >= 1 ? "disabled" : ""}>›</button></div></div>
       <div class="schedule-scroll">${slots.length ? `<div class="schedule-canvas"><div id="time-line" class="time-line"><span id="time-line-label">--:--</span></div><table class="schedule-table"><thead><tr><th class="time-head">Godzina</th>${days.map((day) => `<th class="day-head ${day.today && this._weekOffset === 0 ? "today" : ""}"><strong>${this._e(day.shortLabel)}</strong><span>${this._e(this._date(day.date))}</span></th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="mini-empty roomy">Brak planu w wybranym tygodniu.</div>`}</div>
     </section>`;
+  }
+
+  _customLessonsForDay(student, dateValue) {
+    const date = new Date(dateValue);
+    // Build the date in local time.  `toISOString()` would move a Polish
+    // Monday/Sunday custom lesson to the adjacent UTC day around midnight.
+    const dayKey = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+    const weekday = (date.getDay() + 6) % 7;
+    return (student.custom_schedule || [])
+      .filter((item) => Number(item.weekday) === weekday)
+      .map((item) => ({
+        number: "★",
+        subject: item.subject,
+        start: `${dayKey}T${item.start}:00`,
+        end: `${dayKey}T${item.end}:00`,
+        room: item.room || "zajęcia dodatkowe",
+        teacher: "",
+        attendance: "not_recorded",
+        cancelled: false,
+        replacement: false,
+        note: item.note || "",
+        custom: true,
+        custom_id: item.id,
+      }));
   }
 
   _scheduleLesson(lesson) {
