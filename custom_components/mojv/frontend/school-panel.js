@@ -66,6 +66,24 @@ class MojVSchoolPanel extends HTMLElement {
       const target = event.target.closest("button");
       if (!target) return;
       if (target.id === "refresh") return void this._refresh();
+      // These controls are rendered by optional panel modules, but their
+      // dispatch belongs in the always-loaded shell so an update cannot leave
+      // a visible button without a working action.
+      if (target.dataset.mojvPrint !== undefined) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return void this._printPanel();
+      }
+      if (target.dataset.mojvAddCustom !== undefined) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return void this._openCustomScheduleDialog?.();
+      }
+      if (target.dataset.mojvRemoveCustom !== undefined) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return void this._removeCustomSchedule?.(target.dataset.mojvRemoveCustom);
+      }
       if (target.dataset.student) {
         this._activeStudentId = target.dataset.student;
         this._weekOffset = 0;
@@ -84,6 +102,37 @@ class MojVSchoolPanel extends HTMLElement {
       if (target.dataset.week) this._changeWeek(Number(target.dataset.week));
     });
     this._shellBuilt = true;
+  }
+
+  _printPanel() {
+    // The HA companion app may expose printing only to the top-level page.
+    // When neither context can print, leave a clear, actionable message.
+    let printWindow = typeof window.print === "function" ? window : null;
+    if (!printWindow) {
+      try {
+        printWindow = typeof window.top?.print === "function" ? window.top : null;
+      } catch (_) {
+        printWindow = null;
+      }
+    }
+    if (printWindow) {
+      printWindow.print();
+      return;
+    }
+    this._showPanelActionError("Drukowanie nie jest dostępne w tej aplikacji. Otwórz panel Szkoła w przeglądarce i wybierz Drukuj plan.");
+  }
+
+  _showPanelActionError(message) {
+    const content = this.shadowRoot.querySelector("#view-content");
+    if (!content) return;
+    let notice = content.querySelector("[data-mojv-action-error]");
+    if (!notice) {
+      notice = document.createElement("p");
+      notice.className = "mini-empty";
+      notice.dataset.mojvActionError = "true";
+      content.prepend(notice);
+    }
+    notice.textContent = message;
   }
 
   async _refresh() {

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.1] - 2026-09-06
+
+- naprawiono obsługę przycisków **Drukuj plan** oraz **Dodaj zajęcia**: ich akcje są obsługiwane przez zawsze ładowany rdzeń panelu, niezależnie od kolejności modułów frontendu,
+- drukowanie korzysta z kontekstu panelu albo strony nadrzędnej Home Assistant; gdy aplikacja nie udostępnia drukowania, panel pokazuje jasną instrukcję otwarcia widoku w przeglądarce.
+
 ## [0.15.0] - 2026-09-06
 
 - jeden trwały panel boczny **Szkoła** (`/school`); migracja usuwa historyczny, zdublowany wpis `/mojv-dashboard`,

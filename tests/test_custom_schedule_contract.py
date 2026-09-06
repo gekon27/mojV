@@ -25,10 +25,13 @@ def test_panel_serializes_custom_schedule_and_registers_a_write_command() -> Non
 def test_frontend_has_a_local_schedule_form_and_custom_lesson_marker() -> None:
     source = (COMPONENT / "frontend" / "school-panel-custom-schedule.js").read_text(encoding="utf-8")
     schedule = (COMPONENT / "frontend" / "school-panel-lesson-states.js").read_text(encoding="utf-8")
+    panel = (COMPONENT / "frontend" / "school-panel.js").read_text(encoding="utf-8")
     assert 'type: "mojv/custom_schedule"' in source
     assert "Zapisz lokalnie w Home Assistant" in source
     assert "data-mojv-add-custom" in schedule
     assert "custom-schedule-lesson" in schedule
+    assert "target.dataset.mojvAddCustom" in panel
+    assert "this._openCustomScheduleDialog?.()" in panel
 
 
 def test_communication_templates_are_local_and_do_not_post_to_the_portal() -> None:

@@ -37,7 +37,7 @@ if (proto && !proto.__mojvExpandedSchoolHubPatched) {
         const printButton = event.target.closest?.("[data-mojv-print]");
         if (printButton) {
           event.preventDefault();
-          window.print();
+          this._printPanel();
           return;
         }
         const customizeButton = event.target.closest?.("[data-mojv-customize-modules]");

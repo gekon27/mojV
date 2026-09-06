@@ -128,14 +128,21 @@ def test_topics_can_be_sorted_by_date_and_information_is_last_after_topics() -> 
 def test_plan_and_statistics_have_print_actions_with_print_css() -> None:
     sources = "\n".join(
         path.read_text(encoding="utf-8")
-        for path in (HUB_JS, LESSON_STATES_JS)
+        for path in (HUB_JS, LESSON_STATES_JS, ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js")
     )
-    assert "window.print()" in sources
+    assert "printWindow.print()" in sources
     assert "data-mojv-print" in sources
     assert "@media print" in sources
     assert "Drukuj plan" in sources
     assert "Drukuj statystyki" in sources
     assert "@page{size:A4 landscape;margin:10mm}" in sources
+
+
+def test_print_action_is_dispatched_by_the_always_loaded_panel_shell() -> None:
+    panel = (ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js").read_text(encoding="utf-8")
+    assert "target.dataset.mojvPrint" in panel
+    assert "_printPanel()" in panel
+    assert "window.top?.print" in panel
 
 
 def test_attendance_uses_portal_codes_with_hoverable_accessible_legend() -> None:
