@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15.3] - 2026-09-06
+
+- wydruk **Planu** zawiera wyłącznie tabelę planu oraz nagłówek z imieniem, nazwiskiem i klasą wybranego ucznia; nawigacja, przyciski i bieżące statusy lekcji nie trafiają na papier.
+
 ## [0.15.2] - 2026-09-06
 
 - panel **Szkoła** rejestruje się przed pierwszym pobraniem z portalu; wolny lub chwilowo niedostępny e-dziennik nie usuwa już lokalnego panelu bocznego,

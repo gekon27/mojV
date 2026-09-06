@@ -306,7 +306,7 @@ class MojVSchoolPanel extends HTMLElement {
       return `<tr class="schedule-row" data-start-minute="${slot.startMinute}" data-end-minute="${slot.endMinute}"><th class="time-cell"><strong>${this._minuteLabel(slot.startMinute)}</strong><span>${this._minuteLabel(slot.endMinute)}</span></th>${cells}</tr>`;
     }).join("");
 
-    return `<section class="card schedule-card">
+    return `<section class="schedule-print-header"><h1>Plan lekcji</h1><p>${this._e(student.name)} · klasa ${this._e(student.class || "—")}</p><small>${this._e(this._dateRange(weekStart, weekEnd))}</small></section><section class="card schedule-card">
       <div class="schedule-toolbar"><div><span class="kicker">Plan lekcji</span><h2>${this._e(this._dateRange(weekStart, weekEnd))}</h2></div><div class="week-controls" aria-label="Zmiana tygodnia"><button type="button" class="week-button" data-week="-1" ${this._weekOffset <= -1 ? "disabled" : ""}>‹</button><button type="button" class="week-current" data-week="0">${this._weekOffset === 0 ? "Bieżący tydzień" : "Dzisiaj"}</button><button type="button" class="week-button" data-week="1" ${this._weekOffset >= 1 ? "disabled" : ""}>›</button></div></div>
       <div class="schedule-scroll">${slots.length ? `<div class="schedule-canvas"><div id="time-line" class="time-line"><span id="time-line-label">--:--</span></div><table class="schedule-table"><thead><tr><th class="time-head">Godzina</th>${days.map((day) => `<th class="day-head ${day.today && this._weekOffset === 0 ? "today" : ""}"><strong>${this._e(day.shortLabel)}</strong><span>${this._e(this._date(day.date))}</span></th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="mini-empty roomy">Brak planu w wybranym tygodniu.</div>`}</div>
     </section>`;

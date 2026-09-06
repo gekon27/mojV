@@ -138,6 +138,15 @@ def test_plan_and_statistics_have_print_actions_with_print_css() -> None:
     assert "@page{size:A4 landscape;margin:10mm}" in sources
 
 
+def test_schedule_print_is_limited_to_the_student_plan_and_identity() -> None:
+    panel = (ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js").read_text(encoding="utf-8")
+    hub = HUB_JS.read_text(encoding="utf-8")
+    assert 'class="schedule-print-header"' in panel
+    assert 'student.name)} · klasa' in panel
+    assert ".schedule-toolbar,.schedule-now-indicator" in hub
+    assert ".schedule-print-header{display:block" in hub
+
+
 def test_print_action_is_dispatched_by_the_always_loaded_panel_shell() -> None:
     panel = (ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js").read_text(encoding="utf-8")
     assert "target.dataset.mojvPrint" in panel
