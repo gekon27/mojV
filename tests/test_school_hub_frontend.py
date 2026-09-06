@@ -42,13 +42,22 @@ def test_hub_adds_dashboard_activity_and_notifications_views() -> None:
     assert "_renderNotifications" in source
 
 
-def test_hub_has_badges_and_responsive_layout_without_new_ws_polling() -> None:
+def test_hub_has_badges_and_responsive_layout_without_an_extra_panel_poll() -> None:
     source = _hub_source()
     assert "view-badge" in source
     assert "unread_messages" in source
     assert "@media" in source
     assert "grid-template-columns" in source
-    assert "callWS" not in source
+    # Explicit local template saves are allowed; the Hub must not create its
+    # own polling channel or request the panel payload outside the base refresh.
+    assert 'type: "mojv/panel"' not in HUB.read_text(encoding="utf-8")
+
+
+def test_hub_has_notification_details_and_dashboard_text_gutters() -> None:
+    source = _hub_source()
+    assert "data-notification-detail" in source
+    assert "hub-notification-row:hover::after" in source
+    assert ".hub-detail-card>:not(.section-head){margin-inline:18px}" in source
 
 
 def test_ci_syntax_checks_all_panel_modules() -> None:

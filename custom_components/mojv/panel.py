@@ -5,13 +5,18 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.components import frontend, panel_custom, websocket_api
+from homeassistant.components import frontend, websocket_api
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.util import dt as dt_util
 
 from . import panel_base as _base
 from .const import DOMAIN
 from .coordinator import MojVCoordinator
+from .communication_templates import (
+    CommunicationTemplateStore,
+    DATA_COMMUNICATION_TEMPLATES,
+)
+from .custom_schedule import CustomScheduleStore, DATA_CUSTOM_SCHEDULE
 from .panel_students import select_student_rows
 
 PANEL_URL_PATH = _base.PANEL_URL_PATH
@@ -25,9 +30,9 @@ DAY_NAMES = _base.DAY_NAMES
 
 DASHBOARD_URL_PATH = "mojv-dashboard"
 DASHBOARD_ELEMENT = "mojv-school-dashboard"
-DASHBOARD_TITLE = "Dashboard szkoły"
-DASHBOARD_ICON = "mdi:view-dashboard-outline"
-DATA_DASHBOARD_REGISTERED = f"{DOMAIN}_dashboard_registered"
+# Kept as a migration target for installations upgraded from 0.14.x.  The
+# School Hub is the sole sidebar surface; a second dashboard entry was
+# confusing and duplicated navigation.
 
 _BASE_STUDENT_DICT = _base._student_dict
 
@@ -187,9 +192,22 @@ def websocket_panel_data(
             else []
         )
         stamp = coordinator.data.updated_at
+        schedule_store = hass.data.get(DATA_CUSTOM_SCHEDULE)
         for item in coordinator.data.students:
+            row = _student_dict(item, now, notification_rows)
+            row["custom_schedule"] = (
+                schedule_store.rows_for(item.student.student_id)
+                if isinstance(schedule_store, CustomScheduleStore)
+                else []
+            )
+            template_store = hass.data.get(DATA_COMMUNICATION_TEMPLATES)
+            row["communication_templates"] = (
+                template_store.rows_for(item.student.student_id)
+                if isinstance(template_store, CommunicationTemplateStore)
+                else []
+            )
             candidates.append(
-                (stamp, insertion_index, _student_dict(item, now, notification_rows))
+                (stamp, insertion_index, row)
             )
             insertion_index += 1
         if updated_at is None or stamp > updated_at:
@@ -208,38 +226,129 @@ def websocket_panel_data(
 _base.websocket_panel_data = websocket_panel_data
 
 
-async def async_register_school_panel(hass: HomeAssistant) -> None:
-    """Register the regular School Hub and authenticated browser dashboard."""
-    await _base.async_register_school_panel(hass)
-    if hass.data.get(DATA_DASHBOARD_REGISTERED):
+@websocket_api.async_response
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "mojv/custom_schedule",
+        vol.Required("action"): vol.In(("add", "remove")),
+        vol.Optional("event"): dict,
+        vol.Optional("id"): str,
+    }
+)
+async def websocket_custom_schedule(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Store a local recurring timetable row; never call the school portal."""
+    store = hass.data.get(DATA_CUSTOM_SCHEDULE)
+    if not isinstance(store, CustomScheduleStore):
+        connection.send_error(msg["id"], "not_ready", "Custom schedule is not ready")
         return
+    try:
+        if msg["action"] == "add":
+            event = await store.async_add(msg.get("event") or {})
+            connection.send_result(msg["id"], {"event": event})
+            return
+        await store.async_remove(msg.get("id") or "")
+        connection.send_result(msg["id"], {"removed": True})
+    except vol.Invalid as err:
+        connection.send_error(msg["id"], "invalid_format", str(err))
 
-    await panel_custom.async_register_panel(
-        hass,
-        webcomponent_name=DASHBOARD_ELEMENT,
-        frontend_url_path=DASHBOARD_URL_PATH,
-        module_url=f"{PANEL_STATIC_URL}/school-dashboard.js",
-        sidebar_title=DASHBOARD_TITLE,
-        sidebar_icon=DASHBOARD_ICON,
-        require_admin=False,
-        config={"title": DASHBOARD_TITLE, "full_screen": True},
-    )
-    hass.data[DATA_DASHBOARD_REGISTERED] = True
+
+@websocket_api.async_response
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "mojv/communication_templates",
+        vol.Required("action"): vol.In(("add", "remove")),
+        vol.Optional("template"): dict,
+        vol.Optional("id"): str,
+    }
+)
+async def websocket_communication_templates(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Save local message/excuse templates, without posting to the portal."""
+    store = hass.data.get(DATA_COMMUNICATION_TEMPLATES)
+    if not isinstance(store, CommunicationTemplateStore):
+        connection.send_error(msg["id"], "not_ready", "Communication templates are not ready")
+        return
+    try:
+        if msg["action"] == "add":
+            template = await store.async_add(msg.get("template") or {})
+            connection.send_result(msg["id"], {"template": template})
+            return
+        await store.async_remove(msg.get("id") or "")
+        connection.send_result(msg["id"], {"removed": True})
+    except vol.Invalid as err:
+        connection.send_error(msg["id"], "invalid_format", str(err))
+
+
+@websocket_api.async_response
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "mojv/send_reply",
+        vol.Required("student_id"): str,
+        vol.Required("message_id"): str,
+        vol.Required("body"): str,
+        vol.Required("confirmed"): True,
+    }
+)
+async def websocket_send_reply(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Send one explicitly confirmed reply through the private browser helper."""
+    body = str(msg["body"]).strip()
+    if not body or len(body) > 4000:
+        connection.send_error(msg["id"], "invalid_format", "Message body is invalid")
+        return
+    for coordinator in hass.data.get(DOMAIN, {}).values():
+        if not isinstance(coordinator, MojVCoordinator):
+            continue
+        if not any(item.student.student_id == msg["student_id"] for item in coordinator.data.students):
+            continue
+        try:
+            await coordinator.client.async_send_reply(
+                msg["student_id"], msg["message_id"], body
+            )
+        except Exception as err:  # Portal errors are intentionally secret-free.
+            connection.send_error(msg["id"], "send_failed", str(err))
+            return
+        connection.send_result(msg["id"], {"sent": True})
+        return
+    connection.send_error(msg["id"], "student_not_found", "Student is not configured")
+
+
+async def async_register_school_panel(hass: HomeAssistant) -> None:
+    """Register one School Hub surface and remove the retired duplicate."""
+    await _base.async_register_school_panel(hass)
+    if DATA_CUSTOM_SCHEDULE not in hass.data:
+        schedule_store = CustomScheduleStore(hass)
+        await schedule_store.async_load()
+        hass.data[DATA_CUSTOM_SCHEDULE] = schedule_store
+        websocket_api.async_register_command(hass, websocket_custom_schedule)
+    if DATA_COMMUNICATION_TEMPLATES not in hass.data:
+        template_store = CommunicationTemplateStore(hass)
+        await template_store.async_load()
+        hass.data[DATA_COMMUNICATION_TEMPLATES] = template_store
+        websocket_api.async_register_command(hass, websocket_communication_templates)
+        websocket_api.async_register_command(hass, websocket_send_reply)
+    frontend.async_remove_panel(hass, DASHBOARD_URL_PATH)
 
 
 def async_unregister_school_panel(hass: HomeAssistant) -> None:
-    """Remove both mojV panel surfaces when the last entry unloads."""
-    if hass.data.get(DATA_DASHBOARD_REGISTERED):
-        frontend.async_remove_panel(hass, DASHBOARD_URL_PATH)
-        hass.data[DATA_DASHBOARD_REGISTERED] = False
+    """Remove the sole mojV panel surface when the last entry unloads."""
     _base.async_unregister_school_panel(hass)
 
 
 __all__ = [
-    "DASHBOARD_ELEMENT",
-    "DASHBOARD_TITLE",
-    "DASHBOARD_URL_PATH",
     "DATA_NOTIFIERS",
+    "DASHBOARD_ELEMENT",
+    "DASHBOARD_URL_PATH",
     "PANEL_ELEMENT",
     "PANEL_ICON",
     "PANEL_STATIC_URL",

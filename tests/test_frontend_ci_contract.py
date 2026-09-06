@@ -13,6 +13,7 @@ def test_validate_workflow_checks_all_executable_school_frontend_modules() -> No
         "school-panel-live.js",
         "school-panel-hub-base.js",
         "school-panel-details.js",
+        "school-panel-custom-schedule.js",
         "school-panel-lesson-states.js",
         "school-panel-hub.js",
         "school-dashboard.js",

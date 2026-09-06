@@ -109,6 +109,8 @@ def test_grades_and_messages_tabs_are_always_visible_even_when_empty() -> None:
     assert '["grades", "Oceny", "5"]' in hub
     assert '["messages", "Wiadomości", "✉"]' in hub
     assert "Brak wiadomości" in hub
+    assert '"Korespondencja"' in hub
+    assert 'item.trend === "up"' in hub
 
 
 def test_topics_can_be_sorted_by_date_and_information_is_last_after_topics() -> None:
@@ -133,6 +135,16 @@ def test_plan_and_statistics_have_print_actions_with_print_css() -> None:
     assert "@media print" in sources
     assert "Drukuj plan" in sources
     assert "Drukuj statystyki" in sources
+    assert "@page{size:A4 landscape;margin:10mm}" in sources
+
+
+def test_attendance_uses_portal_codes_with_hoverable_accessible_legend() -> None:
+    hub = HUB_JS.read_text(encoding="utf-8")
+    for code in ("O", "N", "NU", "NS", "S", "SU", "Z", "UW", "UZ", "UO"):
+        assert f'["{code}"' in hub
+    assert "attendance-legend-dot" in hub
+    assert 'title="${this._e(label)}"' in hub
+    assert 'aria-label="${this._e(label)}"' in hub
 
 
 def test_dedicated_statistics_view_has_its_own_print_action() -> None:
@@ -142,6 +154,12 @@ def test_dedicated_statistics_view_has_its_own_print_action() -> None:
     attendance_stats_block = hub.split("proto._renderAttendanceStats = function", 1)[1].split("proto._renderActiveView", 1)[0]
     assert 'data-mojv-print="attendance-stats"' in attendance_stats_block
     assert "Drukuj statystyki" in attendance_stats_block
+
+
+def test_attendance_statistics_fill_available_panel_width() -> None:
+    live = (ROOT / "custom_components" / "mojv" / "frontend" / "school-panel-live.js").read_text(encoding="utf-8")
+    assert '.live-module-card[data-view="attendance_stats"]{max-width:none}' in live
+    assert "repeat(auto-fit,minmax(min(100%,230px),1fr))" in live
 
 
 def test_schoolwork_details_override_list_preview_with_full_content() -> None:
