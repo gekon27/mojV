@@ -65,3 +65,10 @@ def test_empty_live_modules_do_not_force_empty_tabs() -> None:
     assert 'if ((student?.attendance_stats || []).length)' in source
     assert 'if ((student?.achievements || []).length)' in source
     assert 'if ((student?.meetings || []).length)' in source
+
+
+def test_sidebar_panel_is_registered_before_the_first_portal_refresh() -> None:
+    source = (ROOT / "custom_components" / "mojv" / "__init__.py").read_text(encoding="utf-8")
+    assert source.index("await async_register_school_panel(hass)") < source.index(
+        "await coordinator.async_config_entry_first_refresh()"
+    )

@@ -75,10 +75,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         helper_gateway=helper_gateway,
     )
     coordinator = MojVCoordinator(hass, client, live=mode != MODE_DEMO)
-    await coordinator.async_config_entry_first_refresh()
-
+    # The panel is a local Home Assistant surface. Register it before the
+    # first portal request, because a slow school portal must not make the
+    # School entry disappear from the sidebar.
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await async_register_school_panel(hass)
+    await coordinator.async_config_entry_first_refresh()
 
     notifier = MojVNotificationManager(
         hass,

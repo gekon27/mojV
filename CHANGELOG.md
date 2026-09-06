@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.2] - 2026-09-06
+
+- panel **Szkoła** rejestruje się przed pierwszym pobraniem z portalu; wolny lub chwilowo niedostępny e-dziennik nie usuwa już lokalnego panelu bocznego,
+- panel zwraca poprawny pusty stan podczas pierwszego odświeżenia, zamiast błędu WebSocket.
+
 ## [0.15.1] - 2026-09-06
 
 - naprawiono obsługę przycisków **Drukuj plan** oraz **Dodaj zajęcia**: ich akcje są obsługiwane przez zawsze ładowany rdzeń panelu, niezależnie od kolejności modułów frontendu,

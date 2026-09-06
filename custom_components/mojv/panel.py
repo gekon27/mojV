@@ -185,6 +185,10 @@ def websocket_panel_data(
     for entry_id, coordinator in hass.data.get(DOMAIN, {}).items():
         if not isinstance(coordinator, MojVCoordinator):
             continue
+        # The local panel is available while its first portal refresh runs.
+        # Keep its WebSocket response valid until a snapshot arrives.
+        if coordinator.data is None:
+            continue
         notifier = notifiers.get(entry_id)
         notification_rows = (
             notifier.notification_rows()
