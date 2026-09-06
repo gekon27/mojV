@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.5] - 2026-09-06
+
+- wszystkie przyciski drukowania otwierają odizolowany dokument zamiast drukować stronę Home Assistanta; pasek boczny, nagłówek i pozostały interfejs aplikacji nie trafiają na wydruk,
+- statystyki frekwencji są drukowane jako osobny dokument A4 z imieniem i nazwiskiem oraz klasą ucznia.
+
 ## [0.15.4] - 2026-09-06
 
 - przycisk **Drukuj plan** otwiera odizolowany dokument A4 poziomo: zawiera wyłącznie plan, imię i nazwisko ucznia oraz klasę; interfejs Home Assistanta, menu i przyciski nie są już częścią wydruku,

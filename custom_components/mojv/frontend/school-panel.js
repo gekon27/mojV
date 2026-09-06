@@ -106,21 +106,7 @@ class MojVSchoolPanel extends HTMLElement {
 
   _printPanel(kind = "") {
     if (kind === "schedule") return this._printSchedule();
-    // The HA companion app may expose printing only to the top-level page.
-    // When neither context can print, leave a clear, actionable message.
-    let printWindow = typeof window.print === "function" ? window : null;
-    if (!printWindow) {
-      try {
-        printWindow = typeof window.top?.print === "function" ? window.top : null;
-      } catch (_) {
-        printWindow = null;
-      }
-    }
-    if (printWindow) {
-      printWindow.print();
-      return;
-    }
-    this._showPanelActionError("Drukowanie nie jest dostępne w tej aplikacji. Otwórz panel Szkoła w przeglądarce i wybierz Drukuj plan.");
+    return this._printCurrentView(kind);
   }
 
   _printSchedule() {
@@ -140,6 +126,27 @@ class MojVSchoolPanel extends HTMLElement {
     popup.opener = null;
     const title = `Plan lekcji - ${student.name || "uczeń"}`;
     popup.document.write(`<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>${this._e(title)}</title><style>@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{margin:0;color:#000;font-family:Arial,sans-serif}h1{margin:0;font-size:18pt}p{margin:2mm 0 1mm;font-size:12pt;font-weight:700}small{font-size:10pt}table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:5mm}th,td{border:1px solid #b8b8b8;vertical-align:top}th{padding:2.5mm;text-align:center;background:#f1f1f1}td{padding:1.5mm}.time-head,.time-cell{width:15mm;text-align:center;background:#f5f5f5}.time-cell strong,.time-cell span,.day-head strong,.day-head span{display:block}.time-cell{font-size:8pt}.day-head{font-size:10pt}.day-head span{margin-top:1mm;font-size:8pt;color:#444}.schedule-cell{height:18mm}.schedule-lesson{min-height:15mm;padding:2mm;border:1px solid #aaa;border-radius:2mm;background:#f7f7f7}.schedule-lesson+.schedule-lesson{margin-top:1.5mm}.schedule-lesson-top{display:grid;grid-template-columns:7mm 1fr;gap:1.5mm}.lesson-number{font-size:8pt;color:#555}.schedule-lesson-top strong{font-size:9pt;line-height:1.2}.schedule-lesson-meta{margin:1.5mm 0 0 8.5mm;font-size:7.5pt;color:#444}</style></head><body><h1>Plan lekcji</h1><p>${this._e(student.name || "Uczeń")} · klasa ${this._e(student.class || "—")}</p><small>${this._e(this.shadowRoot.querySelector(".schedule-toolbar h2")?.textContent || "")}</small>${copy.outerHTML}<script>window.onload=()=>{const scale=Math.min(1,1048/document.body.scrollWidth,718/document.body.scrollHeight);document.body.style.zoom=scale;window.focus();window.print();};</script></body></html>`);
+    popup.document.close();
+  }
+
+  _printCurrentView(kind) {
+    const student = this._activeStudent();
+    const content = this.shadowRoot.querySelector("#view-content");
+    if (!student || !content) {
+      this._showPanelActionError("Otwórz widok przed drukowaniem.");
+      return;
+    }
+    const copy = content.cloneNode(true);
+    copy.querySelectorAll(".mojv-print-toolbar,.mojv-print-button,button,[data-mojv-action-error]").forEach((node) => node.remove());
+    const heading = kind === "attendance-stats" || kind === "statistics" ? "Statystyki frekwencji" : "Szkoła";
+    const popup = window.open("", "_blank", "width=1000,height=850");
+    if (!popup) {
+      this._showPanelActionError("Przeglądarka zablokowała okno wydruku. Zezwól na wyskakujące okna dla Home Assistanta i spróbuj ponownie.");
+      return;
+    }
+    popup.opener = null;
+    const title = `${heading} - ${student.name || "uczeń"}`;
+    popup.document.write(`<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>${this._e(title)}</title><style>@page{size:A4 portrait;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#000;font-family:Arial,sans-serif}h1{margin:0;font-size:18pt}p{margin:2mm 0 6mm;font-size:12pt;font-weight:700}.card{margin:0 0 5mm;padding:4mm;border:1px solid #bbb;border-radius:2mm;break-inside:avoid}.section-head,.stat-head{display:flex;justify-content:space-between;gap:4mm;border-bottom:1px solid #ddd;padding-bottom:3mm;margin-bottom:3mm}.kicker,small,span{font-size:9pt;color:#444}.data-list,.stat-grid{display:grid;gap:3mm}.data-row,.stat-card{padding:3mm;border-bottom:1px solid #ddd}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-grid>span{padding:2mm;background:#f4f4f4}.stat-grid strong{display:block;color:#000;font-size:14pt}</style></head><body><h1>${this._e(heading)}</h1><p>${this._e(student.name || "Uczeń")} · klasa ${this._e(student.class || "—")}</p>${copy.innerHTML}<script>window.onload=()=>{const scale=Math.min(1,718/document.body.scrollHeight);document.body.style.zoom=scale;window.focus();window.print();};</script></body></html>`);
     popup.document.close();
   }
 
