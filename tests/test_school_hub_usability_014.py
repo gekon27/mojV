@@ -145,12 +145,18 @@ def test_schedule_print_is_limited_to_the_student_plan_and_identity() -> None:
     assert 'student.name)} · klasa' in panel
     assert ".schedule-toolbar,.schedule-now-indicator" in hub
     assert ".schedule-print-header{display:block" in hub
+    assert "_printSchedule()" in panel
+    assert 'querySelector(".schedule-table")' in panel
+    assert 'window.open("", "_blank"' in panel
+    assert "Plan lekcji</h1>" in panel
+    assert "document.body.style.zoom=scale" in panel
+    assert "1048/document.body.scrollWidth" in panel
 
 
 def test_print_action_is_dispatched_by_the_always_loaded_panel_shell() -> None:
     panel = (ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js").read_text(encoding="utf-8")
     assert "target.dataset.mojvPrint" in panel
-    assert "_printPanel()" in panel
+    assert "_printPanel(target.dataset.mojvPrint)" in panel
     assert "window.top?.print" in panel
 
 

@@ -72,7 +72,7 @@ class MojVSchoolPanel extends HTMLElement {
       if (target.dataset.mojvPrint !== undefined) {
         event.preventDefault();
         event.stopImmediatePropagation();
-        return void this._printPanel();
+        return void this._printPanel(target.dataset.mojvPrint);
       }
       if (target.dataset.mojvAddCustom !== undefined) {
         event.preventDefault();
@@ -104,7 +104,8 @@ class MojVSchoolPanel extends HTMLElement {
     this._shellBuilt = true;
   }
 
-  _printPanel() {
+  _printPanel(kind = "") {
+    if (kind === "schedule") return this._printSchedule();
     // The HA companion app may expose printing only to the top-level page.
     // When neither context can print, leave a clear, actionable message.
     let printWindow = typeof window.print === "function" ? window : null;
@@ -120,6 +121,26 @@ class MojVSchoolPanel extends HTMLElement {
       return;
     }
     this._showPanelActionError("Drukowanie nie jest dostępne w tej aplikacji. Otwórz panel Szkoła w przeglądarce i wybierz Drukuj plan.");
+  }
+
+  _printSchedule() {
+    const student = this._activeStudent();
+    const table = this.shadowRoot.querySelector(".schedule-table");
+    if (!student || !table) {
+      this._showPanelActionError("Otwórz widok Plan przed drukowaniem.");
+      return;
+    }
+    const copy = table.cloneNode(true);
+    copy.querySelectorAll(".attendance-mini,.badge-row,.time-line,[data-mojv-remove-custom]").forEach((node) => node.remove());
+    const popup = window.open("", "_blank", "width=1200,height=850");
+    if (!popup) {
+      this._showPanelActionError("Przeglądarka zablokowała okno wydruku. Zezwól na wyskakujące okna dla Home Assistanta i spróbuj ponownie.");
+      return;
+    }
+    popup.opener = null;
+    const title = `Plan lekcji - ${student.name || "uczeń"}`;
+    popup.document.write(`<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>${this._e(title)}</title><style>@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{margin:0;color:#000;font-family:Arial,sans-serif}h1{margin:0;font-size:18pt}p{margin:2mm 0 1mm;font-size:12pt;font-weight:700}small{font-size:10pt}table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:5mm}th,td{border:1px solid #b8b8b8;vertical-align:top}th{padding:2.5mm;text-align:center;background:#f1f1f1}td{padding:1.5mm}.time-head,.time-cell{width:15mm;text-align:center;background:#f5f5f5}.time-cell strong,.time-cell span,.day-head strong,.day-head span{display:block}.time-cell{font-size:8pt}.day-head{font-size:10pt}.day-head span{margin-top:1mm;font-size:8pt;color:#444}.schedule-cell{height:18mm}.schedule-lesson{min-height:15mm;padding:2mm;border:1px solid #aaa;border-radius:2mm;background:#f7f7f7}.schedule-lesson+.schedule-lesson{margin-top:1.5mm}.schedule-lesson-top{display:grid;grid-template-columns:7mm 1fr;gap:1.5mm}.lesson-number{font-size:8pt;color:#555}.schedule-lesson-top strong{font-size:9pt;line-height:1.2}.schedule-lesson-meta{margin:1.5mm 0 0 8.5mm;font-size:7.5pt;color:#444}</style></head><body><h1>Plan lekcji</h1><p>${this._e(student.name || "Uczeń")} · klasa ${this._e(student.class || "—")}</p><small>${this._e(this.shadowRoot.querySelector(".schedule-toolbar h2")?.textContent || "")}</small>${copy.outerHTML}<script>window.onload=()=>{const scale=Math.min(1,1048/document.body.scrollWidth,718/document.body.scrollHeight);document.body.style.zoom=scale;window.focus();window.print();};</script></body></html>`);
+    popup.document.close();
   }
 
   _showPanelActionError(message) {

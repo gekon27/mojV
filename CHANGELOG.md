@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.4] - 2026-09-06
+
+- przycisk **Drukuj plan** otwiera odizolowany dokument A4 poziomo: zawiera wyłącznie plan, imię i nazwisko ucznia oraz klasę; interfejs Home Assistanta, menu i przyciski nie są już częścią wydruku,
+- wydruk automatycznie skaluje zawartość do pojedynczej strony A4.
+
 ## [0.15.3] - 2026-09-06
 
 - wydruk **Planu** zawiera wyłącznie tabelę planu oraz nagłówek z imieniem, nazwiskiem i klasą wybranego ucznia; nawigacja, przyciski i bieżące statusy lekcji nie trafiają na papier.
