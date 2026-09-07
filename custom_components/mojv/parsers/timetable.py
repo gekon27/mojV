@@ -78,6 +78,7 @@ def parse_timetable(
             )
         )
 
+    _append_attendance_only_daycare(lessons, attendance_payload)
     lessons.sort(key=lambda item: item.start)
     return _renumber_missing(lessons)
 
@@ -112,6 +113,56 @@ def _attendance_index(payload: Any) -> dict[tuple[str, str], str]:
             _ATTENDANCE.get(category, "unknown")
         )
     return result
+
+
+def _append_attendance_only_daycare(
+    lessons: list[Lesson], attendance_payload: Any
+) -> None:
+    """Expose daycare intervals recorded only by the attendance endpoint.
+
+    Some schools record after-school care in ``Frekwencja`` but omit it from
+    ``PlanZajec``. Keep this intentionally narrow so unrelated historical
+    attendance rows never become invented timetable entries.
+    """
+    existing = {
+        (lesson.start.date(), lesson.start.time(), lesson.end.time())
+        for lesson in lessons
+        if _is_daycare(lesson.subject)
+    }
+    for row in _records(attendance_payload, dict_list_keys=("oddzialy", "data", "items", "records")):
+        subject = str(
+            row.get("przedmiot")
+            or row.get("przedmiotNazwa")
+            or row.get("nazwaPrzedmiotu")
+            or row.get("nazwa")
+            or ""
+        ).strip()
+        if not _is_daycare(subject):
+            continue
+        lesson_date = _parse_date(row.get("data"))
+        start_time = _parse_time(row.get("godzinaOd"))
+        end_time = _parse_time(row.get("godzinaDo"))
+        if lesson_date is None or start_time is None or end_time is None or end_time <= start_time:
+            continue
+        key = (lesson_date, start_time, end_time)
+        if key in existing:
+            continue
+        category = _int(row.get("kategoriaFrekwencji"), default=0)
+        lessons.append(
+            Lesson(
+                number=0,
+                subject=subject,
+                start=datetime.combine(lesson_date, start_time),
+                end=datetime.combine(lesson_date, end_time),
+                attendance=_ATTENDANCE.get(category, "unknown"),
+            )
+        )
+        existing.add(key)
+
+
+def _is_daycare(subject: str) -> bool:
+    """Return whether a public subject label denotes after-school care."""
+    return "świetlic" in subject.casefold() or "swietlic" in subject.casefold()
 
 
 def _records(

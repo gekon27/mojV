@@ -36,6 +36,19 @@ def test_refresh_targets_two_minutes_after_next_lesson_end() -> None:
     assert next_live_refresh_delay(_snapshot((lesson,)), now) == timedelta(minutes=32)
 
 
+def test_attendance_only_daycare_extends_refresh_boundary() -> None:
+    now = datetime(2026, 9, 4, 12, 50, tzinfo=UTC)
+    daycare = Lesson(
+        number=10,
+        subject="Świetlica",
+        start=now - timedelta(hours=1),
+        end=now + timedelta(minutes=53),
+        attendance="present",
+    )
+
+    assert next_live_refresh_delay(_snapshot((daycare,)), now) == timedelta(minutes=55)
+
+
 def test_refresh_does_not_wait_an_hour_when_post_lesson_boundary_is_near() -> None:
     now = datetime(2026, 9, 4, 8, 46, tzinfo=UTC)
     lesson = _lesson(now - timedelta(minutes=46), now - timedelta(minutes=1))

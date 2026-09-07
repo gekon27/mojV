@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.7] - 2026-09-07
+
+- wpis **Świetlica** zapisany przez portal wyłącznie we frekwencji jest teraz dodawany do planu z aktualnym statusem obecności,
+- koniec świetlicy wyznacza najbliższą granicę odświeżenia LIVE, więc mojV pobiera frekwencję ponownie dwie minuty po wyjściu dziecka.
+
 ## [0.15.6] - 2026-09-07
 
 - naprawiono minutowy zegar Notification Engine: callbacki są jawnie oznaczone jako bezpieczne dla pętli zdarzeń Home Assistanta, więc przypomnienia czasowe nie kończą się już błędem `coroutine was never awaited`.

@@ -54,7 +54,14 @@ def test_builder_combines_plan_attendance_grades_and_schoolwork() -> None:
                 "data": "2026-09-03",
                 "godzinaOd": "08:00",
                 "kategoriaFrekwencji": 1,
-            }
+            },
+            {
+                "data": "2026-09-03",
+                "godzinaOd": "11:50",
+                "godzinaDo": "13:43",
+                "przedmiotNazwa": "Świetlica",
+                "kategoriaFrekwencji": 1,
+            },
         ],
         classification_periods=[{"id": 101, "numerOkresu": 1}],
         grades_by_period={
@@ -91,9 +98,15 @@ def test_builder_combines_plan_attendance_grades_and_schoolwork() -> None:
     )
 
     assert snapshot.student.name == "Jan"
-    assert len(snapshot.lessons) == 1
+    assert len(snapshot.lessons) == 2
     assert snapshot.lessons[0].attendance == "present"
     assert snapshot.lessons[0].start.tzinfo == timezone.utc
+    daycare = snapshot.lessons[1]
+    assert daycare.subject == "Świetlica"
+    assert daycare.attendance == "present"
+    assert daycare.start.hour == 11
+    assert daycare.end.hour == 13
+    assert daycare.end.minute == 43
     assert len(snapshot.grades) == 1
     assert snapshot.grades[0].value == "5"
     assert snapshot.grades[0].date.tzinfo == timezone.utc
