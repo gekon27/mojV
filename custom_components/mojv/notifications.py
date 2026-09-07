@@ -7,7 +7,7 @@ from datetime import time, timedelta
 from typing import Any
 
 from homeassistant.components import persistent_notification
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
@@ -104,9 +104,11 @@ class MojVNotificationManager:
             self._remove_time_listener()
             self._remove_time_listener = None
 
+    @callback
     def _schedule_process(self) -> None:
         self.hass.async_create_task(self._async_process())
 
+    @callback
     def _schedule_time_process(self, _now=None) -> None:
         """Schedule time-only checks without refreshing school data."""
         self.hass.async_create_task(self._async_process_time())

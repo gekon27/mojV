@@ -8,9 +8,12 @@ SOURCE = ROOT / "custom_components" / "mojv" / "notifications.py"
 
 def test_time_notifications_use_local_minute_ticker_without_portal_refresh() -> None:
     source = SOURCE.read_text(encoding="utf-8")
+    assert "from homeassistant.core import HomeAssistant, callback" in source
     assert "async_track_time_interval" in source
     assert "timedelta(minutes=1)" in source
     assert "def _schedule_time_process" in source
+    assert "@callback\n    def _schedule_time_process" in source
+    assert "@callback\n    def _schedule_process" in source
     assert "def _async_process_time" in source
     timer_body = source.split("def _async_process_time", 1)[1].split("def ", 1)[0]
     assert "build_time_candidates" in timer_body

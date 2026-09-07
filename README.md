@@ -6,7 +6,7 @@ Integracja Home Assistant dla danych szkolnych: plan lekcji, aktualna i następn
 
 ## Status
 
-**HACS 0.15.5 — jeden adaptacyjny panel Szkoła, własne zajęcia, A4, frekwencja z legendą, modułowy pulpit i potwierdzane odpowiedzi przez mojV Auth Helper 0.2.0.**
+**HACS 0.15.6 — jeden adaptacyjny panel Szkoła, własne zajęcia, A4, frekwencja z legendą, modułowy pulpit i potwierdzane odpowiedzi przez mojV Auth Helper 0.2.0.**
 
 Projekt jest rozdzielony na dwa niezależne repozytoria:
 
@@ -25,7 +25,7 @@ Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie korzysta z
 
 ## Aktualny zakres LIVE
 
-W HACS 0.15.5 obsługiwane są rzeczywiste dane:
+W HACS 0.15.6 obsługiwane są rzeczywiste dane:
 
 - automatyczne wykrywanie 1..N dzieci,
 - plan lekcji na dokładnie cztery tygodnie łącznie: poprzedni tydzień, tydzień bieżący oraz dwa kolejne tygodnie,
@@ -58,7 +58,7 @@ Każdy dodatkowy moduł jest pobierany niezależnie. Jeżeli jeden endpoint jest
 ## Instalacja HACS
 
 1. W HACS dodaj `https://github.com/gekon27/mojV` jako **Integration** w Custom repositories.
-2. Wybierz `mojV` i zainstaluj wersję **0.15.5** lub nowszą.
+2. Wybierz `mojV` i zainstaluj wersję **0.15.6** lub nowszą.
 3. Uruchom ponownie Home Assistant.
 4. Otwórz **Ustawienia → Urządzenia i usługi → Dodaj integrację → mojV**.
 5. Podaj dane konta szkolnego.
@@ -87,7 +87,7 @@ Obraz `0.2.0` jest publikowany jako manifest multi-arch dla `linux/amd64` i `lin
 
 ## School Hub — panel boczny „Szkoła”
 
-Panel korzysta wyłącznie z publicznego snapshotu zapisanego w Home Assistant. Zmiana dziecka, widoku lub tygodnia nie powoduje dodatkowego logowania do portalu. HACS 0.15.5 pozwala lokalnie przeglądać dokładnie cztery tygodnie: poprzedni, bieżący oraz dwa kolejne, bez dodatkowego requestu przy zmianie tygodnia.
+Panel korzysta wyłącznie z publicznego snapshotu zapisanego w Home Assistant. Zmiana dziecka, widoku lub tygodnia nie powoduje dodatkowego logowania do portalu. HACS 0.15.6 pozwala lokalnie przeglądać dokładnie cztery tygodnie: poprzedni, bieżący oraz dwa kolejne, bez dodatkowego requestu przy zmianie tygodnia.
 
 Od HACS 0.12.0 backend panelu deduplikuje uczniów po stabilnym `student_id`. Jeżeli ten sam uczeń występuje w więcej niż jednym aktywnym wpisie konfiguracji, do interfejsu trafia tylko najświeższy snapshot i nie pojawiają się podwójne przyciski dziecka.
 
@@ -255,9 +255,9 @@ Historia przechowuje maksymalnie 200 najnowszych, deduplikowanych rekordów na w
 
 ## Diagnostyka
 
-Przy starcie integracji HACS 0.15.5 w logu powinien pojawić się wpis:
+Przy starcie integracji HACS 0.15.6 w logu powinien pojawić się wpis:
 
-`mojV integration version=0.15.5`
+`mojV integration version=0.15.6`
 
 W logach helpera:
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15.6] - 2026-09-07
+
+- naprawiono minutowy zegar Notification Engine: callbacki są jawnie oznaczone jako bezpieczne dla pętli zdarzeń Home Assistanta, więc przypomnienia czasowe nie kończą się już błędem `coroutine was never awaited`.
+
 ## [0.15.5] - 2026-09-06
 
 - wszystkie przyciski drukowania otwierają odizolowany dokument zamiast drukować stronę Home Assistanta; pasek boczny, nagłówek i pozostały interfejs aplikacji nie trafiają na wydruk,
