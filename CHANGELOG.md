@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.14] - 2026-09-08
+
+- „Dzisiaj” i tygodniowy plan łączą wpisy o tej samej godzinie w jedną lekcję; znacznik `+N` pokazuje po najechaniu lub po ustawieniu fokusu pełne dane pozostałych wpisów,
+- „Najbliższe informacje” zawierają wyłącznie dane z bieżącego dnia, zachowują dziewięć najnowszych pozycji i układają je kolejno w czytelnej siatce 3×3.
+
 ## [0.15.13] - 2026-09-08
 
 - po pierwszym otwarciu panelu bez snapshotu mojV automatycznie zleca pobranie danych i odświeża widok maksymalnie trzy razy co cztery sekundy; ręczne F5 nie jest potrzebne.

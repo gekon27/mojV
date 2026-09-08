@@ -249,6 +249,26 @@ def test_empty_first_panel_payload_requests_data_and_retries_without_manual_relo
     assert "}, 4000);" in panel
 
 
+def test_today_and_plan_group_duplicate_time_slots_with_accessible_details() -> None:
+    panel = (ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js").read_text(encoding="utf-8")
+    lessons = LESSON_STATES_JS.read_text(encoding="utf-8")
+    hub = HUB_JS.read_text(encoding="utf-8")
+
+    assert "_renderTodayLessonRows" in panel
+    assert "_renderScheduleSlot" in panel
+    assert "_mojvExtraLessonMarker" in lessons
+    assert "lesson-extra-tooltip" in lessons
+    assert 'role="tooltip"' in lessons
+    assert "grid-template-rows:repeat(3,minmax(64px,auto))" in hub
+    assert "slice(0, 9)" in panel
+
+
+def test_today_information_feed_only_uses_entries_from_the_current_day() -> None:
+    panel = (ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js").read_text(encoding="utf-8")
+    for token in ("const isToday", "todayNotifications", "todayMessages", "todayWork", "todayMeetings", "todayGrades"):
+        assert token in panel
+
+
 def test_schoolwork_details_override_list_preview_with_full_content() -> None:
     api_mod = _load_api()
     transport = FakeTransport()

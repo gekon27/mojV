@@ -301,17 +301,26 @@ class MojVSchoolPanel extends HTMLElement {
     const [attendanceText, attendanceClass, attendanceMark] = this._attendance(current?.attendance);
     const alerts = current?.alerts || [];
     const completed = lessons.filter((lesson) => new Date(lesson.end) <= now).length;
-    const upcomingWork = (student.schoolwork || []).filter((item) => new Date(item.due_at || item.date) >= this._dayStart(now)).sort((a, b) => new Date(a.due_at || a.date) - new Date(b.due_at || b.date));
-    const futureMeetings = (student.meetings || []).filter((item) => new Date(item.start) >= now).sort((a, b) => new Date(a.start) - new Date(b.start));
-    const recentGrades = [...(student.grades || [])].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
+    const todayStart = this._dayStart(now);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    const isToday = (value) => {
+      const date = new Date(value);
+      return Number.isFinite(date.getTime()) && date >= todayStart && date < tomorrowStart;
+    };
+    const todayWork = (student.schoolwork || []).filter((item) => isToday(item.due_at || item.date));
+    const todayMeetings = (student.meetings || []).filter((item) => isToday(item.start));
+    const todayGrades = (student.grades || []).filter((item) => isToday(item.date));
+    const todayNotifications = (student.notifications || []).filter((item) => isToday(item.date || item.created_at || item.timestamp));
+    const todayMessages = (student.messages || []).filter((item) => isToday(item.date || item.created_at || item.timestamp));
     const informationRows = [
-      ...alerts.map((alert) => ({ icon: alert.kind === "absence" ? "×" : alert.kind === "late" ? "!" : "⌛", title: alert.text, detail: this._time(now) })),
-      ...upcomingWork.map((item) => ({ icon: "◆", title: item.title || this._workKind(item.kind), detail: `${item.subject || "Zadanie"} · ${this._date(item.due_at || item.date, true)}` })),
-      ...futureMeetings.map((item) => ({ icon: "◷", title: item.title || "Zebranie", detail: `${item.location || "Zebranie"} · ${this._date(item.start, true)}` })),
-      ...recentGrades.map((item) => ({ icon: "5", title: `Ocena ${item.value || "—"}`, detail: `${item.subject || "Przedmiot"} · ${this._date(item.date, true)}` })),
-      ...(student.notifications || []).map((item) => ({ icon: "●", title: item.title || "Powiadomienie", detail: item.message || item.kind || "" })),
-      ...(student.messages || []).map((item) => ({ icon: "✉", title: item.subject || "Wiadomość", detail: item.sender || "Skrzynka" })),
-    ].filter((item) => item.title);
+      ...alerts.map((alert) => ({ at: now, icon: alert.kind === "absence" ? "×" : alert.kind === "late" ? "!" : "⌛", title: alert.text, detail: this._time(now) })),
+      ...todayWork.map((item) => ({ at: new Date(item.due_at || item.date), icon: "◆", title: item.title || this._workKind(item.kind), detail: `${item.subject || "Zadanie"} · ${this._date(item.due_at || item.date, true)}` })),
+      ...todayMeetings.map((item) => ({ at: new Date(item.start), icon: "◷", title: item.title || "Zebranie", detail: `${item.location || "Zebranie"} · ${this._date(item.start, true)}` })),
+      ...todayGrades.map((item) => ({ at: new Date(item.date), icon: "5", title: `Ocena ${item.value || "—"}`, detail: `${item.subject || "Przedmiot"} · ${this._date(item.date, true)}` })),
+      ...todayNotifications.map((item) => ({ at: new Date(item.date || item.created_at || item.timestamp), icon: "●", title: item.title || "Powiadomienie", detail: item.message || item.kind || "" })),
+      ...todayMessages.map((item) => ({ at: new Date(item.date || item.created_at || item.timestamp), icon: "✉", title: item.subject || "Wiadomość", detail: item.sender || "Skrzynka" })),
+    ].filter((item) => item.title).sort((left, right) => right.at - left.at).slice(0, 9);
 
     return `<div class="today-layout">
       <section class="hero-card card">
@@ -327,7 +336,7 @@ class MojVSchoolPanel extends HTMLElement {
           <article class="metric"><span>✓</span><div><small>Postęp dnia</small><strong>${completed}/${lessons.length}</strong></div></article>
         </div>
       </section>
-      <section class="card day-card"><div class="section-head"><div><span class="kicker">Plan dnia</span><h2>${lessons.length} lekcji</h2></div><span>${this._e(student.name)}</span></div><div class="timeline-list">${lessons.length ? lessons.map((lesson) => this._todayLessonRow(lesson, current)).join("") : `<div class="mini-empty">Brak lekcji na dziś.</div>`}</div></section>
+      <section class="card day-card"><div class="section-head"><div><span class="kicker">Plan dnia</span><h2>${lessons.length} lekcji</h2></div><span>${this._e(student.name)}</span></div><div class="timeline-list">${lessons.length ? (this._renderTodayLessonRows ? this._renderTodayLessonRows(lessons, current) : lessons.map((lesson) => this._todayLessonRow(lesson, current)).join("")) : `<div class="mini-empty">Brak lekcji na dziś.</div>`}</div></section>
       <section class="card alerts-card"><div class="section-head"><div><span class="kicker">Najbliższe</span><h2>Informacje</h2></div><span>${informationRows.length}</span></div>${informationRows.length ? `<div class="alert-list">${informationRows.map((item) => `<article class="alert-row"><span>${item.icon}</span><div><strong>${this._e(item.title)}</strong><small>${this._e(item.detail)}</small></div></article>`).join("")}</div>` : `<div class="mini-empty roomy">Brak bieżących alertów, wiadomości i zadań.</div>`}</section>
     </div>`;
   }
@@ -357,7 +366,9 @@ class MojVSchoolPanel extends HTMLElement {
           const state = (lesson) => this._mojvLessonState?.(lesson, new Date()) || "upcoming";
           return Number(state(right) === "completed") - Number(state(left) === "completed");
         });
-        const rendered = lessons.length > 1
+        const rendered = this._renderScheduleSlot
+          ? this._renderScheduleSlot(lessons)
+          : lessons.length > 1
           ? `${this._scheduleLesson(lessons[0])}<details class="schedule-alternatives"><summary>+${lessons.length - 1} alternatywne wpisy</summary>${lessons.slice(1).map((lesson) => this._scheduleLesson(lesson)).join("")}</details>`
           : lessons.map((lesson) => this._scheduleLesson(lesson)).join("");
         return `<td class="schedule-cell ${day.today && this._weekOffset === 0 ? "today-column" : ""}">${rendered}</td>`;

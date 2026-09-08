@@ -6,7 +6,7 @@ Integracja Home Assistant dla danych szkolnych: plan lekcji, aktualna i następn
 
 ## Status
 
-**HACS 0.15.13 — jeden adaptacyjny panel Szkoła, własne zajęcia, A4, frekwencja z legendą, modułowy pulpit i potwierdzane odpowiedzi przez mojV Auth Helper 0.2.0.**
+**HACS 0.15.14 — jeden adaptacyjny panel Szkoła, własne zajęcia, A4, frekwencja z legendą, modułowy pulpit i potwierdzane odpowiedzi przez mojV Auth Helper 0.2.0.**
 
 Projekt jest rozdzielony na dwa niezależne repozytoria:
 
@@ -25,7 +25,7 @@ Jeżeli portal wymaga pełnej przeglądarki, integracja automatycznie korzysta z
 
 ## Aktualny zakres LIVE
 
-W HACS 0.15.13 obsługiwane są rzeczywiste dane:
+W HACS 0.15.14 obsługiwane są rzeczywiste dane:
 
 - automatyczne wykrywanie 1..N dzieci,
 - plan lekcji na dokładnie cztery tygodnie łącznie: poprzedni tydzień, tydzień bieżący oraz dwa kolejne tygodnie,
@@ -255,9 +255,9 @@ Historia przechowuje maksymalnie 200 najnowszych, deduplikowanych rekordów na w
 
 ## Diagnostyka
 
-Przy starcie integracji HACS 0.15.13 w logu powinien pojawić się wpis:
+Przy starcie integracji HACS 0.15.14 w logu powinien pojawić się wpis:
 
-`mojV integration version=0.15.13`
+`mojV integration version=0.15.14`
 
 W logach helpera:
 
