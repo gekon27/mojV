@@ -187,6 +187,18 @@ def test_attendance_statistics_fill_available_panel_width() -> None:
     assert "repeat(auto-fit,minmax(min(100%,230px),1fr))" in live
 
 
+def test_dashboard_configuration_keeps_empty_school_cards_and_accessible_layout_controls() -> None:
+    hub = HUB_JS.read_text(encoding="utf-8")
+    panel = (ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js").read_text(encoding="utf-8")
+    for token in ("messages", "notifications", "meetings", "praises", "remarks", "workspace", "mojv.display_settings", "fontScale"):
+        assert token in hub
+    assert "Brak wiadomości." in hub
+    assert "Brak zebrań." in hub
+    assert "Porównanie dzieci" in hub
+    assert "schedule-alternatives" in panel
+    assert "stat-cards{display:grid;grid-template-columns:repeat(3" in panel
+
+
 def test_schoolwork_details_override_list_preview_with_full_content() -> None:
     api_mod = _load_api()
     transport = FakeTransport()

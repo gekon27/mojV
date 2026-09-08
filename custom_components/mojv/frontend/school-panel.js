@@ -146,7 +146,7 @@ class MojVSchoolPanel extends HTMLElement {
     }
     popup.opener = null;
     const title = `${heading} - ${student.name || "uczeń"}`;
-    popup.document.write(`<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>${this._e(title)}</title><style>@page{size:A4 portrait;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#000;font-family:Arial,sans-serif}h1{margin:0;font-size:18pt}p{margin:2mm 0 6mm;font-size:12pt;font-weight:700}.card{margin:0 0 5mm;padding:4mm;border:1px solid #bbb;border-radius:2mm;break-inside:avoid}.section-head,.stat-head{display:flex;justify-content:space-between;gap:4mm;border-bottom:1px solid #ddd;padding-bottom:3mm;margin-bottom:3mm}.kicker,small,span{font-size:9pt;color:#444}.data-list,.stat-grid{display:grid;gap:3mm}.data-row,.stat-card{padding:3mm;border-bottom:1px solid #ddd}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-grid>span{padding:2mm;background:#f4f4f4}.stat-grid strong{display:block;color:#000;font-size:14pt}</style></head><body><h1>${this._e(heading)}</h1><p>${this._e(student.name || "Uczeń")} · klasa ${this._e(student.class || "—")}</p>${copy.innerHTML}<script>window.onload=()=>{const scale=Math.min(1,718/document.body.scrollHeight);document.body.style.zoom=scale;window.focus();window.print();};</script></body></html>`);
+    popup.document.write(`<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>${this._e(title)}</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{margin:0;color:#000;font-family:Arial,sans-serif}h1{margin:0;font-size:18pt}p{margin:2mm 0 6mm;font-size:12pt;font-weight:700}.card{margin:0 0 5mm;padding:4mm;border:1px solid #bbb;border-radius:2mm;break-inside:avoid}.section-head,.stat-head{display:flex;justify-content:space-between;gap:4mm;border-bottom:1px solid #ddd;padding-bottom:3mm;margin-bottom:3mm}.kicker,small,span{font-size:10pt;color:#444}.data-list,.stat-grid{display:grid;gap:3mm}.data-row,.stat-card{padding:3mm;border-bottom:1px solid #ddd}.stat-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4mm}.stat-card{break-inside:avoid}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-grid>span{padding:2mm;background:#f4f4f4}.stat-grid strong{display:block;color:#000;font-size:14pt}@media print{.stat-card:nth-child(9n+1){break-before:page}}</style></head><body><h1>${this._e(heading)}</h1><p>${this._e(student.name || "Uczeń")} · klasa ${this._e(student.class || "—")}</p>${copy.innerHTML}<script>window.onload=()=>{window.focus();window.print();};</script></body></html>`);
     popup.document.close();
   }
 
@@ -328,8 +328,14 @@ class MojVSchoolPanel extends HTMLElement {
         const lessons = (day.lessons || []).filter((lesson) => {
           const lessonKey = this._slotKey(lesson);
           return lessonKey === slot.key;
+        }).sort((left, right) => {
+          const state = (lesson) => this._mojvLessonState?.(lesson, new Date()) || "upcoming";
+          return Number(state(right) === "completed") - Number(state(left) === "completed");
         });
-        return `<td class="schedule-cell ${day.today && this._weekOffset === 0 ? "today-column" : ""}">${lessons.map((lesson) => this._scheduleLesson(lesson)).join("")}</td>`;
+        const rendered = lessons.length > 1
+          ? `${this._scheduleLesson(lessons[0])}<details class="schedule-alternatives"><summary>+${lessons.length - 1} alternatywne wpisy</summary>${lessons.slice(1).map((lesson) => this._scheduleLesson(lesson)).join("")}</details>`
+          : lessons.map((lesson) => this._scheduleLesson(lesson)).join("");
+        return `<td class="schedule-cell ${day.today && this._weekOffset === 0 ? "today-column" : ""}">${rendered}</td>`;
       }).join("");
       return `<tr class="schedule-row" data-start-minute="${slot.startMinute}" data-end-minute="${slot.endMinute}"><th class="time-cell"><strong>${this._minuteLabel(slot.startMinute)}</strong><span>${this._minuteLabel(slot.endMinute)}</span></th>${cells}</tr>`;
     }).join("");
@@ -406,7 +412,7 @@ class MojVSchoolPanel extends HTMLElement {
 
   _renderRemarks(student) {
     const remarks = [...(student.remarks || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
-    return `<section class="card list-view-card"><div class="section-head"><div><span class="kicker">Uwagi</span><h2>Ostatnie wpisy</h2></div><span>${remarks.length}</span></div><div class="data-list">${remarks.map((remark) => `<article class="data-row"><div class="remark-badge">!</div><div><strong>${this._e(remark.category || "Informacja")}</strong><span>${this._e(remark.text)}</span><small>${this._e(remark.author || "")}</small></div><time>${this._e(this._date(remark.date, true))}</time></article>`).join("")}</div></section>`;
+    return `<section class="card list-view-card"><div class="section-head"><div><span class="kicker">Uwagi</span><h2>Ostatnie wpisy</h2></div><span>${remarks.length}</span></div>${remarks.length ? `<div class="data-list">${remarks.map((remark) => `<article class="data-row"><div class="remark-badge">!</div><div><strong>${this._e(remark.category || "Informacja")}</strong><span>${this._e(remark.text)}</span><small>${this._e(remark.author || "")}</small></div><time>${this._e(this._date(remark.date, true))}</time></article>`).join("")}</div>` : `<div class="mini-empty roomy">Brak uwag w pobranym zakresie.</div>`}</section>`;
   }
 
   _changeWeek(delta) {
