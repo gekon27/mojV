@@ -19,7 +19,7 @@ def test_legacy_browser_dashboard_is_removed_so_school_has_one_sidebar_entry() -
 def test_legacy_dashboard_module_remains_data_free_during_migration() -> None:
     assert DASHBOARD_JS.exists(), "browser dashboard module is not implemented yet"
     source = DASHBOARD_JS.read_text(encoding="utf-8")
-    assert 'import "./school-panel-hub.js"' in source
+    assert 'import "./school-panel-hub.js?v=' in source
     assert 'document.createElement("mojv-school-panel")' in source
     assert 'customElements.define("mojv-school-dashboard"' in source
     assert "mojv/panel" not in source

@@ -222,6 +222,22 @@ def test_frontend_cache_busting_keeps_panel_updates_visible() -> None:
         assert f'{module}?v=' in hub
 
 
+def test_versioned_frontend_modules_do_not_mix_cached_dependency_urls() -> None:
+    for filename in (
+        "school-dashboard.js",
+        "school-panel-hub.js",
+        "school-panel-hub-base.js",
+        "school-panel-live.js",
+        "school-panel-details.js",
+        "school-panel-lesson-states.js",
+        "school-panel-custom-schedule.js",
+    ):
+        source = (FRONTEND / filename).read_text(encoding="utf-8")
+        for line in source.splitlines():
+            if line.startswith('import "./school-panel'):
+                assert "?v=" in line
+
+
 def test_schoolwork_details_override_list_preview_with_full_content() -> None:
     api_mod = _load_api()
     transport = FakeTransport()

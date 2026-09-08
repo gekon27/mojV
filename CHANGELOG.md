@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15.12] - 2026-09-08
+
+- naprawiono regresję `0.15.11`: wszystkie zależne moduły panelu używają teraz tego samego wersjonowanego URL, więc pojedyncze odświeżenie strony wystarcza do uruchomienia panelu.
+
 ## [0.15.11] - 2026-09-08
 
 - adres głównego modułu panelu oraz importy frontendu są wersjonowane, więc po aktualizacji HACS przeglądarka nie używa poprzednich plików JavaScript z cache,

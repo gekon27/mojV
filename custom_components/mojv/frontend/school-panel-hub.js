@@ -1,7 +1,7 @@
-import "./school-panel-hub-base.js?v=0.15.11";
-import "./school-panel-details.js?v=0.15.11";
-import "./school-panel-lesson-states.js?v=0.15.11";
-import "./school-panel-custom-schedule.js?v=0.15.11";
+import "./school-panel-hub-base.js?v=0.15.12";
+import "./school-panel-details.js?v=0.15.12";
+import "./school-panel-lesson-states.js?v=0.15.12";
+import "./school-panel-custom-schedule.js?v=0.15.12";
 
 const PanelClass = customElements.get("mojv-school-panel");
 const proto = PanelClass?.prototype;
