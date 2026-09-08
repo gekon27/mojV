@@ -1,4 +1,4 @@
-import "./school-panel-hub-base.js?v=0.15.13";
+import "./school-panel-hub-base.js?v=0.15.14";
 
 const PanelClass = customElements.get("mojv-school-panel");
 const proto = PanelClass?.prototype;
@@ -79,16 +79,48 @@ if (proto && !proto.__mojvLessonStatesPatched) {
     return `<section class="schedule-now-indicator schedule-state-${this._e(status.state)}" data-schedule-now-indicator="true"><span class="schedule-now-dot"></span><div><strong>${this._e(status.label)}</strong><small>${this._e(status.detail)}</small></div></section>`;
   };
 
-  proto._todayLessonRow = function (lesson) {
+  proto._mojvSortSlotLessons = function (lessons) {
+    const rank = { completed: 0, current: 1, upcoming: 2, cancelled: 3 };
+    return [...lessons].sort((left, right) => {
+      const difference = rank[this._mojvLessonState(left)] - rank[this._mojvLessonState(right)];
+      return difference || new Date(left.start) - new Date(right.start);
+    });
+  };
+
+  proto._mojvExtraLessonMarker = function (lessons) {
+    if (!lessons.length) return "";
+    const label = `${lessons.length} dodatkowy${lessons.length === 1 ? " wpis" : "e wpisy"}`;
+    return `<button type="button" class="lesson-extra-marker" aria-label="${this._e(label)}; najedź lub ustaw fokus, aby zobaczyć szczegóły"><span>+${lessons.length}</span><span class="lesson-extra-tooltip" role="tooltip"><strong>${this._e(label)}</strong>${lessons.map((lesson) => `<span><b>${this._e(lesson.subject || "Lekcja")}</b><small>${this._time(lesson.start)}–${this._time(lesson.end)} · ${this._e(lesson.room || "bez sali")}${lesson.teacher ? ` · ${this._e(lesson.teacher)}` : ""}</small></span>`).join("")}</span></button>`;
+  };
+
+  proto._todayLessonRow = function (lesson, current, alternatives = []) {
     const [text, cls, mark] = this._attendance(lesson.attendance);
     const state = this._mojvLessonState(lesson, new Date());
-    return `<article class="timeline-row lesson-state-${state}" data-lesson-state="${state}"><div class="timeline-time">${this._time(lesson.start)}<small>${this._time(lesson.end)}</small></div><div class="timeline-dot"></div><div class="timeline-copy"><div><strong>${this._e(lesson.subject)}</strong>${this._mojvLessonStateBadge(state)}${lesson.replacement ? `<span class="badge warn">Zastępstwo</span>` : ""}</div><span>Lekcja ${this._e(lesson.number)} · ${this._e(lesson.room || "bez sali")}${lesson.teacher ? ` · ${this._e(lesson.teacher)}` : ""}</span></div><div class="attendance-dot ${cls}" title="${this._e(text)}">${this._e(mark)}</div></article>`;
+    return `<article class="timeline-row lesson-state-${state}" data-lesson-state="${state}"><div class="timeline-time">${this._time(lesson.start)}<small>${this._time(lesson.end)}</small></div><div class="timeline-dot"></div><div class="timeline-copy"><div><strong>${this._e(lesson.subject)}</strong>${this._mojvLessonStateBadge(state)}${lesson.replacement ? `<span class="badge warn">Zastępstwo</span>` : ""}${this._mojvExtraLessonMarker(alternatives)}</div><span>Lekcja ${this._e(lesson.number)} · ${this._e(lesson.room || "bez sali")}${lesson.teacher ? ` · ${this._e(lesson.teacher)}` : ""}</span></div><div class="attendance-dot ${cls}" title="${this._e(text)}">${this._e(mark)}</div></article>`;
+  };
+
+  proto._renderTodayLessonRows = function (lessons, current) {
+    const groups = new Map();
+    for (const lesson of lessons) {
+      const key = `${lesson.start}|${lesson.end}`;
+      groups.set(key, [...(groups.get(key) || []), lesson]);
+    }
+    return [...groups.values()].map((rows) => {
+      const ordered = this._mojvSortSlotLessons(rows);
+      return this._todayLessonRow(ordered[0], current, ordered.slice(1));
+    }).join("");
   };
 
   proto._scheduleLesson = function (lesson) {
     const [text, cls, mark] = this._attendance(lesson.attendance);
     const state = this._mojvLessonState(lesson, new Date());
     return `<div class="schedule-lesson lesson-state-${state} ${lesson.custom ? "custom-schedule-lesson" : ""}" data-lesson-state="${state}" data-cancelled="${lesson.cancelled ? "true" : "false"}" data-start="${this._e(lesson.start)}" data-end="${this._e(lesson.end)}"><div class="schedule-lesson-top"><span class="lesson-number">${this._e(lesson.number)}</span><strong>${this._e(lesson.subject)}</strong><span class="attendance-mini ${cls}" title="${this._e(text)}">${this._e(mark)}</span></div><div class="schedule-lesson-meta">${this._e(lesson.room || "zajęcia dodatkowe")}${lesson.teacher ? ` · ${this._e(lesson.teacher)}` : ""}</div><div class="badge-row"><span class="lesson-state-badge-slot">${this._mojvLessonStateBadge(state)}</span>${lesson.custom ? `<span class="badge custom-schedule-badge">Własne</span><button type="button" class="custom-schedule-remove" data-mojv-remove-custom="${this._e(lesson.custom_id)}" aria-label="Usuń własne zajęcia">×</button>` : ""}${lesson.replacement ? `<span class="badge warn">Zastępstwo</span>` : ""}</div></div>`;
+  };
+
+  proto._renderScheduleSlot = function (lessons) {
+    if (!lessons.length) return "";
+    const ordered = this._mojvSortSlotLessons(lessons);
+    return `<div class="schedule-slot-with-extras">${this._scheduleLesson(ordered[0])}${this._mojvExtraLessonMarker(ordered.slice(1))}</div>`;
   };
 
   proto._renderSchedule = function (student) {
@@ -103,19 +135,9 @@ if (proto && !proto.__mojvLessonStatesPatched) {
       `›</button><button type="button" class="mojv-print-button" data-mojv-add-custom="true">Dodaj zajęcia</button><button type="button" class="mojv-print-button" data-mojv-print="schedule">Drukuj plan</button></div></div>`,
     );
     const status = this._mojvScheduleStatus(student, new Date());
-    const duplicates = [];
-    for (const day of this._weekDays(student, this._weekOffset)) {
-      const grouped = new Map();
-      for (const lesson of [...(day.lessons || []), ...this._customLessonsForDay(student, day.date)]) {
-        const key = this._slotKey(lesson);
-        grouped.set(key, [...(grouped.get(key) || []), lesson]);
-      }
-      for (const rows of grouped.values()) if (rows.length > 1) duplicates.push({ day, rows });
-    }
-    const extras = duplicates.length ? `<aside class="schedule-extra-dock" data-mojv-schedule-extras><button type="button" data-mojv-toggle-schedule-extras="true"><strong>＋ Dodatkowe wpisy</strong><span>${duplicates.length}</span></button><div class="schedule-extra-popup"><div><span class="kicker">Plan lekcji</span><h3>Dodatkowe wpisy</h3></div>${duplicates.map(({ day, rows }) => `<article><strong>${this._e(day.shortLabel)} · ${this._time(rows[0].start)}</strong>${rows.map((lesson) => `<span>${this._e(lesson.subject)}${lesson.room ? ` · ${this._e(lesson.room)}` : ""}</span>`).join("")}</article>`).join("")}</div></aside>` : "";
     return html.replace(
       `<div class="schedule-scroll">`,
-      `${this._mojvScheduleStatusMarkup(status)}${extras}<div class="schedule-scroll">`,
+      `${this._mojvScheduleStatusMarkup(status)}<div class="schedule-scroll">`,
     );
   };
 
@@ -162,8 +184,7 @@ if (proto && !proto.__mojvLessonStatesPatched) {
       .mojv-print-button{min-height:44px;padding:0 12px;border:1px solid var(--mv-line);border-radius:13px;background:var(--mv-card);cursor:pointer;font-size:10px;font-weight:750;white-space:nowrap}.mojv-print-button:hover,.mojv-print-button:focus-visible{border-color:var(--mv-accent);outline:none}
       .schedule-canvas{min-width:1160px}.time-head,.time-cell{width:96px;min-width:96px}.time-head,.day-head{height:60px}.day-head strong{font-size:12.5px}.day-head span{font-size:10px}.time-cell strong{font-size:11px}.time-cell span{font-size:10px}.schedule-cell{min-height:86px;padding:7px}.schedule-lesson{min-height:78px;padding:10px 11px;border-radius:12px}.schedule-lesson-top{grid-template-columns:24px 1fr 24px;gap:7px}.schedule-lesson-top strong{font-size:13px;line-height:1.25}.lesson-number{font-size:10px}.schedule-lesson-meta{margin:6px 0 0 31px;font-size:10.5px;line-height:1.3}.badge-row{margin:6px 0 0 31px}.time-line{left:96px}.time-line span{left:-85px;width:79px;font-size:10px}
       .custom-schedule-lesson{border-style:dashed;border-color:color-mix(in srgb,var(--mv-accent) 55%,var(--mv-line))}.custom-schedule-badge{background:color-mix(in srgb,var(--mv-accent) 14%,transparent);color:var(--mv-accent)}.custom-schedule-remove{width:18px;height:18px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--mv-muted);cursor:pointer;font-size:15px;line-height:1}.custom-schedule-remove:hover,.custom-schedule-remove:focus-visible{color:var(--mv-bad);outline:1px solid var(--mv-bad)}
-      .schedule-alternatives{margin-top:7px;border-top:1px dashed var(--mv-line)}.schedule-alternatives summary{padding:7px 2px 1px;color:var(--mv-accent);cursor:pointer;font-size:11px;font-weight:750}.schedule-alternatives[open] summary{margin-bottom:5px}.schedule-alternatives .schedule-lesson{margin-top:6px}
-      .day-head{box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--mv-muted) 45%,transparent)}.day-head.today{box-shadow:inset 0 -4px 0 var(--mv-accent)}.schedule-extra-dock{position:fixed;z-index:30;left:20px;bottom:20px;max-width:min(390px,calc(100vw - 40px))}.schedule-extra-dock>button{display:flex;align-items:center;gap:8px;padding:10px 13px;border:1px solid var(--mv-line);border-radius:13px;background:var(--mv-card);box-shadow:0 8px 28px rgba(0,0,0,.24);cursor:pointer;color:inherit}.schedule-extra-dock>button span{display:grid;place-items:center;min-width:22px;height:22px;border-radius:50%;background:var(--mv-accent);color:#fff;font-size:11px;font-weight:850}.schedule-extra-popup{display:none;position:absolute;left:calc(100% + 10px);bottom:0;width:min(390px,calc(100vw - 60px));max-height:min(70vh,620px);overflow:auto;padding:16px;border:1px solid var(--mv-line);border-radius:16px;background:var(--mv-card);box-shadow:0 16px 50px rgba(0,0,0,.32)}.schedule-extra-dock.open .schedule-extra-popup{display:grid;gap:10px}.schedule-extra-popup h3{margin:3px 0 0;font-size:18px}.schedule-extra-popup article{display:grid;gap:4px;padding:10px 0;border-top:1px solid var(--mv-line)}.schedule-extra-popup span{color:var(--mv-muted);font-size:12px}@media(max-width:760px){.schedule-extra-dock{left:10px;bottom:10px}.schedule-extra-popup{left:0;bottom:calc(100% + 10px);width:min(390px,calc(100vw - 20px))}}
+      .schedule-slot-with-extras{position:relative}.lesson-extra-marker{position:relative;display:inline-grid;place-items:center;min-width:25px;height:22px;padding:0 6px;border:0;border-radius:999px;background:color-mix(in srgb,var(--mv-accent) 18%,var(--mv-card));color:var(--mv-accent);font:inherit;font-size:10px;font-weight:850;cursor:help}.timeline-copy .lesson-extra-marker{margin-left:2px}.schedule-slot-with-extras>.lesson-extra-marker{position:absolute;z-index:3;right:8px;top:8px}.lesson-extra-marker:hover,.lesson-extra-marker:focus-visible{outline:2px solid var(--mv-accent);outline-offset:2px}.lesson-extra-tooltip{display:none;position:absolute;z-index:40;left:0;top:calc(100% + 8px);width:min(310px,calc(100vw - 36px));padding:11px 12px;border:1px solid var(--mv-line);border-radius:11px;background:var(--mv-card);color:var(--primary-text-color,#fff);box-shadow:0 12px 32px rgba(0,0,0,.3);text-align:left}.schedule-slot-with-extras>.lesson-extra-marker .lesson-extra-tooltip{left:auto;right:0}.lesson-extra-marker:hover .lesson-extra-tooltip,.lesson-extra-marker:focus-visible .lesson-extra-tooltip{display:grid;gap:7px}.lesson-extra-tooltip>strong{font-size:11px}.lesson-extra-tooltip>span{display:grid;gap:2px;padding-top:6px;border-top:1px solid var(--mv-line)}.lesson-extra-tooltip b{font-size:11px}.lesson-extra-tooltip small{color:var(--mv-muted);font-size:10px;line-height:1.35}.day-head{box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--mv-muted) 45%,transparent)}.day-head.today{box-shadow:inset 0 -4px 0 var(--mv-accent)}
       @media(max-width:760px){.schedule-now-indicator{margin:10px 12px 0}.mojv-print-button{min-height:40px}}
     `;
   };
