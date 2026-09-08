@@ -103,9 +103,19 @@ if (proto && !proto.__mojvLessonStatesPatched) {
       `›</button><button type="button" class="mojv-print-button" data-mojv-add-custom="true">Dodaj zajęcia</button><button type="button" class="mojv-print-button" data-mojv-print="schedule">Drukuj plan</button></div></div>`,
     );
     const status = this._mojvScheduleStatus(student, new Date());
+    const duplicates = [];
+    for (const day of this._weekDays(student, this._weekOffset)) {
+      const grouped = new Map();
+      for (const lesson of [...(day.lessons || []), ...this._customLessonsForDay(student, day.date)]) {
+        const key = this._slotKey(lesson);
+        grouped.set(key, [...(grouped.get(key) || []), lesson]);
+      }
+      for (const rows of grouped.values()) if (rows.length > 1) duplicates.push({ day, rows });
+    }
+    const extras = duplicates.length ? `<aside class="schedule-extra-dock" data-mojv-schedule-extras><button type="button" data-mojv-toggle-schedule-extras="true"><strong>＋ Dodatkowe wpisy</strong><span>${duplicates.length}</span></button><div class="schedule-extra-popup"><div><span class="kicker">Plan lekcji</span><h3>Dodatkowe wpisy</h3></div>${duplicates.map(({ day, rows }) => `<article><strong>${this._e(day.shortLabel)} · ${this._time(rows[0].start)}</strong>${rows.map((lesson) => `<span>${this._e(lesson.subject)}${lesson.room ? ` · ${this._e(lesson.room)}` : ""}</span>`).join("")}</article>`).join("")}</div></aside>` : "";
     return html.replace(
       `<div class="schedule-scroll">`,
-      `${this._mojvScheduleStatusMarkup(status)}<div class="schedule-scroll">`,
+      `${this._mojvScheduleStatusMarkup(status)}${extras}<div class="schedule-scroll">`,
     );
   };
 
@@ -153,6 +163,7 @@ if (proto && !proto.__mojvLessonStatesPatched) {
       .schedule-canvas{min-width:1160px}.time-head,.time-cell{width:96px;min-width:96px}.time-head,.day-head{height:60px}.day-head strong{font-size:12.5px}.day-head span{font-size:10px}.time-cell strong{font-size:11px}.time-cell span{font-size:10px}.schedule-cell{min-height:86px;padding:7px}.schedule-lesson{min-height:78px;padding:10px 11px;border-radius:12px}.schedule-lesson-top{grid-template-columns:24px 1fr 24px;gap:7px}.schedule-lesson-top strong{font-size:13px;line-height:1.25}.lesson-number{font-size:10px}.schedule-lesson-meta{margin:6px 0 0 31px;font-size:10.5px;line-height:1.3}.badge-row{margin:6px 0 0 31px}.time-line{left:96px}.time-line span{left:-85px;width:79px;font-size:10px}
       .custom-schedule-lesson{border-style:dashed;border-color:color-mix(in srgb,var(--mv-accent) 55%,var(--mv-line))}.custom-schedule-badge{background:color-mix(in srgb,var(--mv-accent) 14%,transparent);color:var(--mv-accent)}.custom-schedule-remove{width:18px;height:18px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--mv-muted);cursor:pointer;font-size:15px;line-height:1}.custom-schedule-remove:hover,.custom-schedule-remove:focus-visible{color:var(--mv-bad);outline:1px solid var(--mv-bad)}
       .schedule-alternatives{margin-top:7px;border-top:1px dashed var(--mv-line)}.schedule-alternatives summary{padding:7px 2px 1px;color:var(--mv-accent);cursor:pointer;font-size:11px;font-weight:750}.schedule-alternatives[open] summary{margin-bottom:5px}.schedule-alternatives .schedule-lesson{margin-top:6px}
+      .day-head{box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--mv-muted) 45%,transparent)}.day-head.today{box-shadow:inset 0 -4px 0 var(--mv-accent)}.schedule-extra-dock{position:fixed;z-index:30;left:20px;bottom:20px;max-width:min(390px,calc(100vw - 40px))}.schedule-extra-dock>button{display:flex;align-items:center;gap:8px;padding:10px 13px;border:1px solid var(--mv-line);border-radius:13px;background:var(--mv-card);box-shadow:0 8px 28px rgba(0,0,0,.24);cursor:pointer;color:inherit}.schedule-extra-dock>button span{display:grid;place-items:center;min-width:22px;height:22px;border-radius:50%;background:var(--mv-accent);color:#fff;font-size:11px;font-weight:850}.schedule-extra-popup{display:none;position:absolute;left:calc(100% + 10px);bottom:0;width:min(390px,calc(100vw - 60px));max-height:min(70vh,620px);overflow:auto;padding:16px;border:1px solid var(--mv-line);border-radius:16px;background:var(--mv-card);box-shadow:0 16px 50px rgba(0,0,0,.32)}.schedule-extra-dock.open .schedule-extra-popup{display:grid;gap:10px}.schedule-extra-popup h3{margin:3px 0 0;font-size:18px}.schedule-extra-popup article{display:grid;gap:4px;padding:10px 0;border-top:1px solid var(--mv-line)}.schedule-extra-popup span{color:var(--mv-muted);font-size:12px}@media(max-width:760px){.schedule-extra-dock{left:10px;bottom:10px}.schedule-extra-popup{left:0;bottom:calc(100% + 10px);width:min(390px,calc(100vw - 20px))}}
       @media(max-width:760px){.schedule-now-indicator{margin:10px 12px 0}.mojv-print-button{min-height:40px}}
     `;
   };

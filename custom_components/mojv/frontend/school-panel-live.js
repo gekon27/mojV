@@ -117,7 +117,7 @@ if (proto && !proto.__mojvLiveModulesPatched) {
       .message-row.unread strong{color:var(--mv-accent)}
       .live-module-card[data-view="attendance_stats"]{max-width:none}.live-module-card[data-view="attendance_stats"] .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px}
       .stat-card{padding:16px;border:1px solid var(--mv-line);background:var(--mv-soft);border-radius:14px}
-      .stat-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.stat-head>div{display:grid;gap:5px}.stat-head strong{font-size:24px}.stat-head>span{font-size:11px;color:var(--mv-muted)}
+      .stat-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.stat-head>div{display:grid;gap:5px;min-width:0}.stat-head strong{font-size:24px;white-space:nowrap;font-variant-numeric:tabular-nums}.stat-head>span{font-size:11px;color:var(--mv-muted);white-space:nowrap}
       .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:14px}.stat-grid span{display:grid;padding:8px;border-radius:10px;background:var(--mv-card)}.stat-grid small{color:var(--mv-muted);font-size:10px}.stat-grid strong{margin-top:2px}
       .meeting-row time{display:grid;gap:3px;text-align:right}.meeting-row time small{color:var(--mv-muted)}.meeting-row p{max-width:80ch}
       .meeting-link{display:inline-block;margin-top:8px;color:var(--mv-accent);font-weight:700;text-decoration:none}.meeting-link:hover{text-decoration:underline}

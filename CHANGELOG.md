@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.9] - 2026-09-08
+
+- ustawienia pulpitu mają płynny suwak wielkości tekstu, wybór aktywnego albo wskazanych dzieci oraz własne kolory i inicjały,
+- nawigacja panelu zawija się do kolejnego wiersza zamiast wyjeżdżać poza stronę, a alerty „Dzisiaj” wykorzystują pełną szerokość w trzech kolumnach,
+- dodatkowe wpisy w tym samym slocie planu mają dolny lewy wskaźnik i rozwijany popup; nagłówki dni otrzymały wyraźne podkreślenie, mocniejsze dla dnia bieżącego,
+- procent frekwencji nie rozdziela już liczby i znaku `%` na osobne wiersze.
+
 ## [0.15.8] - 2026-09-08
 
 - pulpit otrzymał adaptacyjne, konfigurowalne karty wiadomości, powiadomień, zebrań, pochwał i uwag — także z czytelnym pustym stanem,
