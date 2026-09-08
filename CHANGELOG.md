@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.8] - 2026-09-08
+
+- pulpit otrzymał adaptacyjne, konfigurowalne karty wiadomości, powiadomień, zebrań, pochwał i uwag — także z czytelnym pustym stanem,
+- dodano widok porównawczy aktywnych dzieci, ustawienie większego tekstu i osobny motyw dla każdego ucznia,
+- zduplikowane wpisy w tym samym slocie planu są zwijane, a zakończona lekcja jest pokazywana jako pierwsza,
+- wydruk statystyk frekwencji korzysta z czytelnego układu A4 poziomo zamiast zmniejszać całą zawartość.
+
 ## [0.15.7] - 2026-09-07
 
 - wpis **Świetlica** zapisany przez portal wyłącznie we frekwencji jest teraz dodawany do planu z aktualnym statusem obecności,
