@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.15.10] - 2026-09-08
+
+- konfigurator pulpitu rozróżnia aktywne dziecko, wskazane dziecko lub dzieci oraz wszystkie dzieci; wybrany pojedynczy profil jest teraz faktycznie renderowany,
+- suwak tekstu działa w całym deklarowanym zakresie 90–145%,
+- sekcja „Dzisiaj → Najbliższe informacje” zbiera bieżące alerty, wszystkie nadchodzące zadania, powiadomienia i wiadomości w trwałym układzie trzech kolumn.
+
 ## [0.15.9] - 2026-09-08
 
 - ustawienia pulpitu mają płynny suwak wielkości tekstu, wybór aktywnego albo wskazanych dzieci oraz własne kolory i inicjały,

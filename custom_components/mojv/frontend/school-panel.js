@@ -286,7 +286,13 @@ class MojVSchoolPanel extends HTMLElement {
     const [attendanceText, attendanceClass, attendanceMark] = this._attendance(current?.attendance);
     const alerts = current?.alerts || [];
     const completed = lessons.filter((lesson) => new Date(lesson.end) <= now).length;
-    const upcomingWork = (student.schoolwork || []).filter((item) => new Date(item.date) >= this._dayStart(now)).sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+    const upcomingWork = (student.schoolwork || []).filter((item) => new Date(item.date) >= this._dayStart(now)).sort((a, b) => new Date(a.date) - new Date(b.date));
+    const informationRows = [
+      ...alerts.map((alert) => ({ icon: alert.kind === "absence" ? "×" : alert.kind === "late" ? "!" : "⌛", title: alert.text, detail: this._time(now) })),
+      ...upcomingWork.map((item) => ({ icon: "◆", title: item.title || this._workKind(item.kind), detail: `${item.subject || "Zadanie"} · ${this._date(item.date, true)}` })),
+      ...(student.notifications || []).map((item) => ({ icon: "●", title: item.title || "Powiadomienie", detail: item.message || item.kind || "" })),
+      ...(student.messages || []).map((item) => ({ icon: "✉", title: item.subject || "Wiadomość", detail: item.sender || "Skrzynka" })),
+    ].filter((item) => item.title).slice(0, 18);
 
     return `<div class="today-layout">
       <section class="hero-card card">
@@ -303,7 +309,7 @@ class MojVSchoolPanel extends HTMLElement {
         </div>
       </section>
       <section class="card day-card"><div class="section-head"><div><span class="kicker">Plan dnia</span><h2>${lessons.length} lekcji</h2></div><span>${this._e(student.name)}</span></div><div class="timeline-list">${lessons.length ? lessons.map((lesson) => this._todayLessonRow(lesson, current)).join("") : `<div class="mini-empty">Brak lekcji na dziś.</div>`}</div></section>
-      <section class="card alerts-card"><div class="section-head"><div><span class="kicker">Najbliższe</span><h2>Informacje</h2></div></div>${alerts.length ? `<div class="alert-list">${alerts.map((alert) => `<article class="alert-row"><span>${alert.kind === "absence" ? "×" : alert.kind === "late" ? "!" : "⌛"}</span><div><strong>${this._e(alert.text)}</strong><small>${this._time(now)}</small></div></article>`).join("")}</div>` : upcomingWork ? `<div class="alert-list"><article class="alert-row"><span>◆</span><div><strong>${this._e(upcomingWork.title || this._workKind(upcomingWork.kind))}</strong><small>${this._e(upcomingWork.subject)} · ${this._date(upcomingWork.date, true)}</small></div></article></div>` : `<div class="mini-empty roomy">Brak bieżących alertów i zadań.</div>`}</section>
+      <section class="card alerts-card"><div class="section-head"><div><span class="kicker">Najbliższe</span><h2>Informacje</h2></div><span>${informationRows.length}</span></div>${informationRows.length ? `<div class="alert-list">${informationRows.map((item) => `<article class="alert-row"><span>${item.icon}</span><div><strong>${this._e(item.title)}</strong><small>${this._e(item.detail)}</small></div></article>`).join("")}</div>` : `<div class="mini-empty roomy">Brak bieżących alertów, wiadomości i zadań.</div>`}</section>
     </div>`;
   }
 
