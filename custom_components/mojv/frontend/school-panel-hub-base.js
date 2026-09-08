@@ -1,4 +1,4 @@
-import "./school-panel-live.js";
+import "./school-panel-live.js?v=0.15.11";
 
 const PanelClass = customElements.get("mojv-school-panel");
 const proto = PanelClass?.prototype;

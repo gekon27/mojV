@@ -23,8 +23,8 @@ def test_hub_wrapper_extends_live_panel_and_is_registered() -> None:
             ROOT / "custom_components" / "mojv" / "panel.py",
         )
     )
-    assert 'import "./school-panel-live.js"' in source
-    assert 'import "./school-panel-hub-base.js"' in HUB.read_text(encoding="utf-8")
+    assert 'import "./school-panel-live.js?v=' in source
+    assert 'import "./school-panel-hub-base.js?v=' in HUB.read_text(encoding="utf-8")
     assert "school-panel-hub.js" in panel
 
 

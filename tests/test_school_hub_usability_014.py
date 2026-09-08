@@ -212,6 +212,16 @@ def test_dashboard_configuration_supports_active_selected_and_all_children() -> 
     assert "student.messages" in panel
 
 
+def test_frontend_cache_busting_keeps_panel_updates_visible() -> None:
+    panel_base = (ROOT / "custom_components" / "mojv" / "panel_base.py").read_text(encoding="utf-8")
+    hub = HUB_JS.read_text(encoding="utf-8")
+    assert "def _frontend_module_url()" in panel_base
+    assert 'module_url=_frontend_module_url()' in panel_base
+    assert "school-panel-hub.js?v=" in panel_base
+    for module in ("school-panel-hub-base.js", "school-panel-details.js", "school-panel-lesson-states.js", "school-panel-custom-schedule.js"):
+        assert f'{module}?v=' in hub
+
+
 def test_schoolwork_details_override_list_preview_with_full_content() -> None:
     api_mod = _load_api()
     transport = FakeTransport()

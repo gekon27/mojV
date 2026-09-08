@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.11] - 2026-09-08
+
+- adres głównego modułu panelu oraz importy frontendu są wersjonowane, więc po aktualizacji HACS przeglądarka nie używa poprzednich plików JavaScript z cache,
+- przycisk `A a` w górnym pasku zawsze otwiera ustawienia wielkości tekstu — także zanim pojawią się dane ucznia,
+- „Dzisiaj → Najbliższe informacje” jest poziomą kolejką: zawiera wszystkie przyszłe terminy, zebrania, ostatnie oceny, wiadomości i powiadomienia, bez ograniczania do bieżącego dnia,
+- Terminarz korzysta z pełnej szerokości panelu oraz większej, czytelniejszej typografii.
+
 ## [0.15.10] - 2026-09-08
 
 - konfigurator pulpitu rozróżnia aktywne dziecko, wskazane dziecko lub dzieci oraz wszystkie dzieci; wybrany pojedynczy profil jest teraz faktycznie renderowany,

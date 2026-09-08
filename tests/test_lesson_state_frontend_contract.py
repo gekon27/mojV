@@ -54,4 +54,4 @@ def test_replacement_badge_remains_additive_to_temporal_state() -> None:
 
 def test_hub_imports_lesson_state_patch() -> None:
     hub = HUB_JS.read_text(encoding="utf-8")
-    assert 'import "./school-panel-lesson-states.js"' in hub
+    assert 'import "./school-panel-lesson-states.js?v=' in hub

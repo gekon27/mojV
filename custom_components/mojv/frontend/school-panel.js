@@ -52,6 +52,7 @@ class MojVSchoolPanel extends HTMLElement {
           </div>
           <div class="top-actions">
             <div class="sync-box"><span id="clock-label">--:--</span><small id="sync-label">Dane jeszcze niepobrane</small></div>
+            <button class="icon-button mojv-display-settings" type="button" data-mojv-customize-modules="true" aria-label="Wygląd i wielkość tekstu" title="Wygląd i wielkość tekstu">A<span>a</span></button>
             <button id="refresh" class="icon-button" type="button" aria-label="Odśwież dane" title="Odśwież dane">↻</button>
           </div>
         </header>
@@ -286,13 +287,17 @@ class MojVSchoolPanel extends HTMLElement {
     const [attendanceText, attendanceClass, attendanceMark] = this._attendance(current?.attendance);
     const alerts = current?.alerts || [];
     const completed = lessons.filter((lesson) => new Date(lesson.end) <= now).length;
-    const upcomingWork = (student.schoolwork || []).filter((item) => new Date(item.date) >= this._dayStart(now)).sort((a, b) => new Date(a.date) - new Date(b.date));
+    const upcomingWork = (student.schoolwork || []).filter((item) => new Date(item.due_at || item.date) >= this._dayStart(now)).sort((a, b) => new Date(a.due_at || a.date) - new Date(b.due_at || b.date));
+    const futureMeetings = (student.meetings || []).filter((item) => new Date(item.start) >= now).sort((a, b) => new Date(a.start) - new Date(b.start));
+    const recentGrades = [...(student.grades || [])].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
     const informationRows = [
       ...alerts.map((alert) => ({ icon: alert.kind === "absence" ? "×" : alert.kind === "late" ? "!" : "⌛", title: alert.text, detail: this._time(now) })),
-      ...upcomingWork.map((item) => ({ icon: "◆", title: item.title || this._workKind(item.kind), detail: `${item.subject || "Zadanie"} · ${this._date(item.date, true)}` })),
+      ...upcomingWork.map((item) => ({ icon: "◆", title: item.title || this._workKind(item.kind), detail: `${item.subject || "Zadanie"} · ${this._date(item.due_at || item.date, true)}` })),
+      ...futureMeetings.map((item) => ({ icon: "◷", title: item.title || "Zebranie", detail: `${item.location || "Zebranie"} · ${this._date(item.start, true)}` })),
+      ...recentGrades.map((item) => ({ icon: "5", title: `Ocena ${item.value || "—"}`, detail: `${item.subject || "Przedmiot"} · ${this._date(item.date, true)}` })),
       ...(student.notifications || []).map((item) => ({ icon: "●", title: item.title || "Powiadomienie", detail: item.message || item.kind || "" })),
       ...(student.messages || []).map((item) => ({ icon: "✉", title: item.subject || "Wiadomość", detail: item.sender || "Skrzynka" })),
-    ].filter((item) => item.title).slice(0, 18);
+    ].filter((item) => item.title);
 
     return `<div class="today-layout">
       <section class="hero-card card">

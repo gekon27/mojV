@@ -41,7 +41,7 @@ def test_detail_overlay_has_neutral_fallback_when_source_has_no_body() -> None:
 
 def test_important_today_details_use_the_same_safe_overlay() -> None:
     hub = HUB_JS.read_text(encoding="utf-8")
-    assert 'import "./school-panel-details.js"' in hub
+    assert 'import "./school-panel-details.js?v=' in hub
     assert 'data-mojv-detail-kind="important"' in hub
     assert "item.description" in hub
     assert "_detailPreview(item.description" in hub

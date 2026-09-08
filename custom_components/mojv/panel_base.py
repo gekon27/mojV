@@ -1,6 +1,7 @@
 """Sidebar School Hub and WebSocket data API for mojV."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,15 @@ DAY_NAMES = (
     "Sobota",
     "Niedziela",
 )
+
+
+def _frontend_module_url() -> str:
+    """Version the module URL so a HACS update cannot reuse stale JS."""
+    manifest_path = Path(__file__).with_name("manifest.json")
+    version = json.loads(manifest_path.read_text(encoding="utf-8")).get(
+        "version", "unknown"
+    )
+    return f"{PANEL_STATIC_URL}/school-panel-hub.js?v={version}"
 
 
 def _lesson_dict(lesson, now) -> dict[str, Any] | None:
@@ -462,7 +472,7 @@ async def async_register_school_panel(hass: HomeAssistant) -> None:
         hass,
         webcomponent_name=PANEL_ELEMENT,
         frontend_url_path=PANEL_URL_PATH,
-        module_url=f"{PANEL_STATIC_URL}/school-panel-hub.js",
+        module_url=_frontend_module_url(),
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
         require_admin=False,

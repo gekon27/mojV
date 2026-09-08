@@ -32,8 +32,8 @@ def test_panel_payload_exposes_all_live_modules() -> None:
     assert '"unread": message.unread' in source
     assert '"percentage": stat.percentage' in source
     assert "school-panel-hub.js" in source
-    assert 'import "./school-panel-live.js"' in FRONTEND_HUB_BASE.read_text(encoding="utf-8")
-    assert 'import "./school-panel-hub-base.js"' in FRONTEND_HUB.read_text(encoding="utf-8")
+    assert 'import "./school-panel-live.js?v=' in FRONTEND_HUB_BASE.read_text(encoding="utf-8")
+    assert 'import "./school-panel-hub-base.js?v=' in FRONTEND_HUB.read_text(encoding="utf-8")
 
 
 def test_frontend_has_dynamic_live_module_views() -> None:
