@@ -9,6 +9,8 @@ class MojVSchoolPanel extends HTMLElement {
     this._activeView = "today";
     this._weekOffset = 0;
     this._ticker = null;
+    this._initialRefreshTimer = null;
+    this._initialRefreshRetries = 0;
     this._refreshing = false;
     this._shellBuilt = false;
     this._lastCurrentKey = null;
@@ -33,6 +35,10 @@ class MojVSchoolPanel extends HTMLElement {
     if (this._ticker) {
       window.clearInterval(this._ticker);
       this._ticker = null;
+    }
+    if (this._initialRefreshTimer) {
+      window.clearTimeout(this._initialRefreshTimer);
+      this._initialRefreshTimer = null;
     }
   }
 
@@ -190,6 +196,14 @@ class MojVSchoolPanel extends HTMLElement {
     this._renderSyncLabel();
     this._renderNavigation();
     this._renderActiveView();
+    if (!students.length && this._initialRefreshRetries < 3 && !this._initialRefreshTimer) {
+      this._initialRefreshRetries += 1;
+      this._initialRefreshTimer = window.setTimeout(() => {
+        this._initialRefreshTimer = null;
+        this._refresh();
+      }, 4000);
+    }
+    if (students.length) this._initialRefreshRetries = 0;
   }
 
   _setRefreshBusy(busy) {

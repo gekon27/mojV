@@ -238,6 +238,17 @@ def test_versioned_frontend_modules_do_not_mix_cached_dependency_urls() -> None:
                 assert "?v=" in line
 
 
+def test_empty_first_panel_payload_requests_data_and_retries_without_manual_reload() -> None:
+    base = (ROOT / "custom_components" / "mojv" / "panel_base.py").read_text(encoding="utf-8")
+    expanded = PANEL_PY.read_text(encoding="utf-8")
+    panel = (ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js").read_text(encoding="utf-8")
+    assert "if coordinator.data is None:" in base
+    assert "coordinator.async_request_refresh()" in base
+    assert "coordinator.async_request_refresh()" in expanded
+    assert "this._initialRefreshRetries < 3" in panel
+    assert "}, 4000);" in panel
+
+
 def test_schoolwork_details_override_list_preview_with_full_content() -> None:
     api_mod = _load_api()
     transport = FakeTransport()

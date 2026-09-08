@@ -430,6 +430,12 @@ def websocket_panel_data(
     for entry_id, coordinator in hass.data.get(DOMAIN, {}).items():
         if not isinstance(coordinator, MojVCoordinator):
             continue
+        if coordinator.data is None:
+            # The sidebar is registered before the first portal request.  If a
+            # user opens it during that short window, ensure it obtains a real
+            # refresh instead of returning an empty payload indefinitely.
+            coordinator.async_request_refresh()
+            continue
         notifier = notifiers.get(entry_id)
         notification_rows = (
             notifier.notification_rows()

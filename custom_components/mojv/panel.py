@@ -188,6 +188,7 @@ def websocket_panel_data(
         # The local panel is available while its first portal refresh runs.
         # Keep its WebSocket response valid until a snapshot arrives.
         if coordinator.data is None:
+            coordinator.async_request_refresh()
             continue
         notifier = notifiers.get(entry_id)
         notification_rows = (
