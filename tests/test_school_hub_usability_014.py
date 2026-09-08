@@ -249,6 +249,15 @@ def test_empty_first_panel_payload_requests_data_and_retries_without_manual_relo
     assert "}, 4000);" in panel
 
 
+def test_font_settings_button_has_an_always_loaded_fallback() -> None:
+    panel = (ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js").read_text(encoding="utf-8")
+    assert "target.dataset.mojvCustomizeModules" in panel
+    assert "_openMojvFontSettingsFallback" in panel
+    assert "_applyMojvFontScale" in panel
+    assert 'localStorage.setItem("mojv.display_settings"' in panel
+    assert "input[name=fontScale]" in panel
+
+
 def test_today_and_plan_group_duplicate_time_slots_with_accessible_details() -> None:
     panel = (ROOT / "custom_components" / "mojv" / "frontend" / "school-panel.js").read_text(encoding="utf-8")
     lessons = LESSON_STATES_JS.read_text(encoding="utf-8")

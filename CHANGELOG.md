@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15.15] - 2026-09-08
+
+- przycisk `A a` ma teraz obsługę w zawsze ładowanym module bazowym; gdy opcjonalny School Hub nie załaduje się w danej sesji, otwiera niezależny konfigurator wielkości tekstu zamiast pozostawać martwy.
+
 ## [0.15.14] - 2026-09-08
 
 - „Dzisiaj” i tygodniowy plan łączą wpisy o tej samej godzinie w jedną lekcję; znacznik `+N` pokazuje po najechaniu lub po ustawieniu fokusu pełne dane pozostałych wpisów,

@@ -76,6 +76,14 @@ class MojVSchoolPanel extends HTMLElement {
       // These controls are rendered by optional panel modules, but their
       // dispatch belongs in the always-loaded shell so an update cannot leave
       // a visible button without a working action.
+      if (target.dataset.mojvCustomizeModules !== undefined) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (typeof this._mojvOpenModuleSettings === "function") {
+          return void this._mojvOpenModuleSettings();
+        }
+        return void this._openMojvFontSettingsFallback();
+      }
       if (target.dataset.mojvPrint !== undefined) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -109,6 +117,41 @@ class MojVSchoolPanel extends HTMLElement {
       if (target.dataset.week) this._changeWeek(Number(target.dataset.week));
     });
     this._shellBuilt = true;
+  }
+
+  _openMojvFontSettingsFallback() {
+    this.shadowRoot.querySelector("[data-mojv-font-settings]")?.remove();
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem("mojv.display_settings") || "{}"); } catch (_) { /* ignore malformed local preference */ }
+    const scale = Math.min(1.45, Math.max(0.9, Number(saved.fontScale) || 1.12));
+    const overlay = document.createElement("div");
+    overlay.className = "mojv-font-overlay";
+    overlay.dataset.mojvFontSettings = "true";
+    overlay.style.cssText = "position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:20px";
+    overlay.innerHTML = `<div class="mojv-font-backdrop" data-mojv-close-font-settings="true" style="position:absolute;inset:0;background:rgba(0,0,0,.48)"></div><section class="mojv-font-dialog" role="dialog" aria-modal="true" aria-labelledby="mojv-font-title" style="position:relative;z-index:1;width:min(420px,100%);display:grid;gap:18px;padding:20px;border:1px solid var(--mv-line);border-radius:18px;background:var(--mv-card);box-shadow:0 24px 80px rgba(0,0,0,.35)"><div><span class="kicker">Wygląd</span><h2 id="mojv-font-title" style="margin:4px 0;font-size:22px">Wielkość tekstu</h2><p style="margin:0;color:var(--mv-muted);font-size:13px">Ustawienie zostanie zapamiętane w tej przeglądarce.</p></div><form style="display:grid;gap:16px"><label style="display:grid;gap:8px;font-weight:750">Skala <output data-mojv-font-output>${Math.round(scale * 100)}%</output><input name="fontScale" type="range" min="0.9" max="1.45" step="0.05" value="${scale}"></label><div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" class="mojv-font-secondary" data-mojv-close-font-settings="true">Anuluj</button><button type="submit" class="mojv-font-primary">Zapisz</button></div></form></section>`;
+    const applyPreview = (value) => {
+      const next = Math.min(1.45, Math.max(0.9, Number(value) || 1.12));
+      this.style.setProperty("--mojv-font-scale", String(next));
+      overlay.querySelector("[data-mojv-font-output]").textContent = `${Math.round(next * 100)}%`;
+    };
+    overlay.querySelector("input[name=fontScale]").addEventListener("input", (event) => applyPreview(event.target.value));
+    overlay.addEventListener("click", (event) => { if (event.target.closest?.("[data-mojv-close-font-settings]")) { this._applyMojvFontScale(scale); overlay.remove(); } });
+    overlay.querySelector("form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const next = Math.min(1.45, Math.max(0.9, Number(new FormData(event.currentTarget).get("fontScale")) || 1.12));
+      saved.fontScale = next;
+      localStorage.setItem("mojv.display_settings", JSON.stringify(saved));
+      this._applyMojvFontScale(next);
+      overlay.remove();
+      this._renderActiveView();
+    });
+    this.shadowRoot.append(overlay);
+  }
+
+  _applyMojvFontScale(scale) {
+    const next = Math.min(1.45, Math.max(0.9, Number(scale) || 1.12));
+    this.style.setProperty("--mojv-font-scale", String(next));
+    this.style.fontSize = `calc(16px * ${next})`;
   }
 
   _printPanel(kind = "") {

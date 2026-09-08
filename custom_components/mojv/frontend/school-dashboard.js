@@ -1,4 +1,4 @@
-import "./school-panel-hub.js?v=0.15.14";
+import "./school-panel-hub.js?v=0.15.15";
 
 class MojVSchoolDashboard extends HTMLElement {
   constructor() {
